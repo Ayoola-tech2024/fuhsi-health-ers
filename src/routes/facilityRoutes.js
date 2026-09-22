@@ -4,9 +4,10 @@ const { requireAuth, requireRole } = require('../middleware/auth');
 
 const router = express.Router();
 
-router.use(requireAuth);
-
+// Publicly visible so students, visitors, and responders can locate health facilities immediately
 router.get('/', facilityController.list);
-router.post('/', requireRole('admin'), facilityController.create);
+
+// Admin-only facility creation
+router.post('/', requireAuth, requireRole('admin'), facilityController.create);
 
 module.exports = router;
