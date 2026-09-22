@@ -61,6 +61,14 @@ export default class ErrorBoundary extends React.Component {
               Clear Cache & Reset
             </button>
           </div>
+          {this.state.error && (
+            <details className="mt-6 text-left max-w-sm w-full bg-black/40 border border-red-500/30 rounded-xl p-3 text-[11px] text-red-200 overflow-x-auto">
+              <summary className="cursor-pointer text-slate-400 hover:text-slate-200 font-mono text-[10px]">
+                Technical Diagnostics
+              </summary>
+              <p className="mt-2 font-mono text-red-400 break-all">{this.state.error?.toString()}</p>
+            </details>
+          )}
         </div>
       );
     }

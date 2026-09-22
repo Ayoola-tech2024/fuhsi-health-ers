@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
 import {
@@ -17,22 +17,15 @@ import {
   UserCheck,
   PhoneCall,
   X,
-  Building2,
   ArrowRight,
-  Shield,
-  Clock,
   Check,
-  AlertCircle,
   Apple,
   Cross,
-  User,
-  LogIn,
   UserPlus
 } from 'lucide-react';
 
 export default function SOSPage() {
   const { user, isAuthenticated } = useAuth();
-  const navigate = useNavigate();
 
   // Dynamic Live Database State
   const [profile, setProfile] = useState(null);
@@ -54,6 +47,7 @@ export default function SOSPage() {
   const [ambulanceLocation, setAmbulanceLocation] = useState('Current GPS Location');
   const [ambulanceUrgency, setAmbulanceUrgency] = useState('High');
 
+  const [showBookingModal, setShowBookingModal] = useState(false);
   const [selectedDoctor, setSelectedDoctor] = useState('Campus Duty Medical Officer');
   const [bookingTime, setBookingTime] = useState('Today, 2:30 PM');
   const [bookingConfirmed, setBookingConfirmed] = useState(false);
@@ -588,7 +582,9 @@ export default function SOSPage() {
                   onChange={(e) => setAmbulanceLocation(e.target.value)}
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-medium text-slate-900 focus:outline-none focus:border-blue-500"
                 >
-                  <option value="Current GPS Location">Current GPS Location ({coords.latitude.toFixed(4)}, {coords.longitude.toFixed(4)})</option>
+                  <option value="Current GPS Location">
+                    Current GPS Location ({coords?.latitude != null ? coords.latitude.toFixed(4) : '8.0194'}, {coords?.longitude != null ? coords.longitude.toFixed(4) : '4.9042'})
+                  </option>
                   <option value="Hostel Block B Complex">Hostel Block B Complex</option>
                   <option value="Faculty of Basic Medical Sciences">Faculty of Basic Medical Sciences</option>
                   <option value="Main Lecture Theatre A">Main Lecture Theatre A</option>
