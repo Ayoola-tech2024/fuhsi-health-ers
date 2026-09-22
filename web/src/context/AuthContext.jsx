@@ -18,12 +18,26 @@ export function AuthProvider({ children }) {
         const data = await api.getMe();
         if (data && data.user) {
           setUser(data.user);
+          localStorage.setItem('fuhsi_user_data', JSON.stringify(data.user));
+        } else {
+          // Token is invalid/expired
+          localStorage.removeItem('fuhsi_token');
+          localStorage.removeItem('fuhsi_user_data');
+          setToken(null);
+          setUser(null);
         }
       } catch (err) {
-        console.warn('Session user fallback or expired token');
-        const savedUser = localStorage.getItem('fuhsi_user_data');
-        if (savedUser) {
-          try { setUser(JSON.parse(savedUser)); } catch (e) {}
+        if (err.status === 401 || err.status === 403) {
+          localStorage.removeItem('fuhsi_token');
+          localStorage.removeItem('fuhsi_user_data');
+          setToken(null);
+          setUser(null);
+        } else {
+          // Network glitch or cold start: restore cached user temporarily
+          const savedUser = localStorage.getItem('fuhsi_user_data');
+          if (savedUser) {
+            try { setUser(JSON.parse(savedUser)); } catch (e) {}
+          }
         }
       } finally {
         setLoading(false);
@@ -33,93 +47,38 @@ export function AuthProvider({ children }) {
   }, [token]);
 
   const login = async (email, password) => {
-    try {
-      const data = await api.login({ email, password });
-      localStorage.setItem('fuhsi_token', data.token);
-      localStorage.setItem('fuhsi_user_data', JSON.stringify(data.user));
-      setToken(data.token);
-      setUser(data.user);
-      return data.user;
-    } catch (err) {
-      console.warn('Backend login fallback for offline resilience:', err);
-      const fallbackUser = {
-        id: 'usr-' + Date.now(),
-        full_name: email.split('@')[0].toUpperCase(),
-        email: email,
-        role: email.includes('doc') ? 'clinician' : email.includes('resp') ? 'responder' : 'student',
-        matric_number: 'FUHSI/2023/MBBS/' + Math.floor(100 + Math.random() * 900),
-      };
-      const dummyToken = `jwt_${Date.now()}`;
-      localStorage.setItem('fuhsi_token', dummyToken);
-      localStorage.setItem('fuhsi_user_data', JSON.stringify(fallbackUser));
-      setToken(dummyToken);
-      setUser(fallbackUser);
-      return fallbackUser;
+    const data = await api.login({ email, password });
+    if (!data.token || !data.user) {
+      throw new Error(data.message || 'Login failed');
     }
+    localStorage.setItem('fuhsi_token', data.token);
+    localStorage.setItem('fuhsi_user_data', JSON.stringify(data.user));
+    setToken(data.token);
+    setUser(data.user);
+    return data.user;
   };
 
-  const loginAsDemo = (role = 'student') => {
-    const demoUsers = {
-      student: {
-        id: 'demo-student-001',
-        full_name: 'Adewale Bakare',
-        email: 'student@fuhsi.edu.ng',
-        role: 'student',
-        matric_number: 'FUHSI/2023/MBBS/0142',
-        phone: '+234 803 123 4567',
-      },
-      clinician: {
-        id: 'demo-doc-002',
-        full_name: 'Dr. Fatima Olamide',
-        email: 'doctor@fuhsi.edu.ng',
-        role: 'clinician',
-        staff_id: 'DOC-FUHSI-088',
-        phone: '+234 802 987 6543',
-      },
-      responder: {
-        id: 'demo-resp-003',
-        full_name: 'Officer John Musa',
-        email: 'responder@fuhsi.edu.ng',
-        role: 'responder',
-        staff_id: 'EMS-FUHSI-012',
-        phone: '+234 814 555 0199',
-      },
+  const loginAsDemo = async (role = 'student') => {
+    // Attempt real login against seeded database demo accounts
+    const credentials = {
+      student: { email: 'student@fuhsi.edu.ng', password: 'password123' },
+      clinician: { email: 'doctor@fuhsi.edu.ng', password: 'password123' },
+      responder: { email: 'responder@fuhsi.edu.ng', password: 'password123' },
     };
-
-    const demoUser = demoUsers[role] || demoUsers.student;
-    const dummyToken = `demo_jwt_${role}_${Date.now()}`;
-    localStorage.setItem('fuhsi_token', dummyToken);
-    localStorage.setItem('fuhsi_user_data', JSON.stringify(demoUser));
-    setToken(dummyToken);
-    setUser(demoUser);
-    return demoUser;
+    const cred = credentials[role] || credentials.student;
+    return await login(cred.email, cred.password);
   };
 
   const register = async (payload) => {
-    try {
-      const data = await api.register(payload);
-      localStorage.setItem('fuhsi_token', data.token);
-      localStorage.setItem('fuhsi_user_data', JSON.stringify(data.user));
-      setToken(data.token);
-      setUser(data.user);
-      return data.user;
-    } catch (err) {
-      console.warn('Backend registration fallback for offline resilience:', err);
-      const fallbackUser = {
-        id: 'usr-' + Date.now(),
-        full_name: payload.fullName || payload.full_name || 'FUHSI Student',
-        email: payload.email,
-        role: payload.role || 'student',
-        matric_number: payload.matricNumber || payload.matric_number || 'FUHSI/2023/MBBS/0142',
-        phone: payload.phone || '+234 800 000 0000',
-      };
-      const dummyToken = `jwt_${Date.now()}`;
-      localStorage.setItem('fuhsi_token', dummyToken);
-      localStorage.setItem('fuhsi_user_data', JSON.stringify(fallbackUser));
-      setToken(dummyToken);
-      setUser(fallbackUser);
-      return fallbackUser;
+    const data = await api.register(payload);
+    if (!data.token || !data.user) {
+      throw new Error(data.message || 'Registration failed');
     }
+    localStorage.setItem('fuhsi_token', data.token);
+    localStorage.setItem('fuhsi_user_data', JSON.stringify(data.user));
+    setToken(data.token);
+    setUser(data.user);
+    return data.user;
   };
 
   const logout = () => {

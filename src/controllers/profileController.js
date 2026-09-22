@@ -1,5 +1,5 @@
 const profileModel = require('../models/profileModel');
-const { asyncHandler } = require('../utils/helpers');
+const { asyncHandler, ApiError } = require('../utils/helpers');
 
 const getMyProfile = asyncHandler(async (req, res) => {
   const profile = await profileModel.getProfile(req.user.id);
@@ -7,8 +7,14 @@ const getMyProfile = asyncHandler(async (req, res) => {
 });
 
 const getStudentProfile = asyncHandler(async (req, res) => {
-  const profile = await profileModel.getProfile(req.params.studentId);
-  res.json({ profile: profile || null });
+  const query = req.params.studentId;
+  const data = await profileModel.getStudentWithProfile(query);
+  if (!data) {
+    const profile = await profileModel.getProfile(query);
+    if (!profile) throw new ApiError(404, 'Student record not found');
+    return res.json({ profile });
+  }
+  res.json({ student: data, profile: data });
 });
 
 const upsertMyProfile = asyncHandler(async (req, res) => {

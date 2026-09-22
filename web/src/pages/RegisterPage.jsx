@@ -26,25 +26,29 @@ export default function RegisterPage() {
     setLoading(true);
     setError(null);
 
+    if (form.password.length < 8) {
+      setError('Password must be at least 8 characters long.');
+      setLoading(false);
+      return;
+    }
+
     try {
       const payload = {
-        fullName: form.full_name,
-        email: form.email,
+        fullName: form.full_name.trim(),
+        email: form.email.trim(),
         password: form.password,
-        phone: form.phone,
+        phone: form.phone.trim(),
         role: role,
-        matricNumber: role === 'student' ? form.matric_number : undefined,
-        staffId: role !== 'student' ? form.staff_id : undefined,
+        matricNumber: role === 'student' ? form.matric_number.trim() : undefined,
+        staffId: role !== 'student' ? form.staff_id.trim() : undefined,
+        department: role === 'student' ? form.department : undefined,
       };
 
       await register(payload);
       setSuccess(true);
-      setTimeout(() => navigate('/'), 1500);
+      setTimeout(() => navigate('/'), 1200);
     } catch (err) {
-      console.warn('Registration fallback:', err);
-      // Fallback local registration for seamless demo testing
-      setSuccess(true);
-      setTimeout(() => navigate('/'), 1500);
+      setError(err.message || 'Registration failed. Please check your information and try again.');
     } finally {
       setLoading(false);
     }
@@ -70,7 +74,7 @@ export default function RegisterPage() {
           </div>
 
           {error && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700">
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700 font-medium">
               {error}
             </div>
           )}
@@ -78,7 +82,7 @@ export default function RegisterPage() {
           {success && (
             <div className="mb-4 p-3.5 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-800 flex items-center space-x-2">
               <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-              <span>Account registered successfully! Logging you in...</span>
+              <span>Account registered successfully! Directing to dashboard...</span>
             </div>
           )}
 
@@ -120,7 +124,7 @@ export default function RegisterPage() {
                 <User className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
                 <input
                   type="text"
-                  placeholder="e.g. Akinlabi Babatunde"
+                  placeholder="Enter your full name"
                   value={form.full_name}
                   onChange={(e) => setForm({ ...form, full_name: e.target.value })}
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-red-500"
@@ -135,7 +139,7 @@ export default function RegisterPage() {
                 <Mail className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
                 <input
                   type="email"
-                  placeholder="e.g. akinlabi@fuhsi.edu.ng"
+                  placeholder="name@fuhsi.edu.ng"
                   value={form.email}
                   onChange={(e) => setForm({ ...form, email: e.target.value })}
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-red-500"
@@ -162,7 +166,7 @@ export default function RegisterPage() {
                   <label className="block text-[11px] font-semibold text-slate-700 mb-1">Staff ID</label>
                   <input
                     type="text"
-                    placeholder="DOC-FUHSI-..."
+                    placeholder="STAFF-FUHSI-..."
                     value={form.staff_id}
                     onChange={(e) => setForm({ ...form, staff_id: e.target.value })}
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-red-500"
@@ -203,12 +207,15 @@ export default function RegisterPage() {
             </div>
 
             <div>
-              <label className="block text-[11px] font-semibold text-slate-700 mb-1">Password</label>
+              <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                Password <span className="text-slate-400 font-normal">(minimum 8 characters)</span>
+              </label>
               <div className="relative">
                 <Lock className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
                 <input
                   type="password"
-                  placeholder="Create secure password"
+                  placeholder="At least 8 characters"
+                  minLength={8}
                   value={form.password}
                   onChange={(e) => setForm({ ...form, password: e.target.value })}
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-red-500"

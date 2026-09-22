@@ -44,6 +44,7 @@ export const api = {
 
   // Profile & Medical info
   getProfile: () => request('/profile'),
+  getStudentProfile: (studentId) => request(`/profile/${encodeURIComponent(studentId)}`),
   updateProfile: (profileData) => request('/profile', { method: 'PUT', body: JSON.stringify(profileData) }),
 
   // Clinical entries (Clinician verification)

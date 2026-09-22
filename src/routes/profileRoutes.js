@@ -6,11 +6,13 @@ const router = express.Router();
 
 router.use(requireAuth);
 
-// The student's own profile — self-owned, self-editable.
+// The student's own profile — self-owned, self-editable (matches both / and /me)
+router.get('/', profileController.getMyProfile);
+router.put('/', profileController.upsertMyProfile);
 router.get('/me', profileController.getMyProfile);
 router.put('/me', profileController.upsertMyProfile);
 
-// Clinician/responder/admin lookup of a specific student's profile.
+// Clinician/responder/admin lookup of a specific student's profile by ID or matric number
 router.get(
   '/:studentId',
   requireRole('clinician', 'responder', 'admin'),

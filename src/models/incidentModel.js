@@ -2,8 +2,8 @@ const { pool } = require('../config/db');
 
 // Valid forward transitions in the ERS flow.
 const VALID_TRANSITIONS = {
-  reported: ['triaged', 'cancelled'],
-  triaged: ['responder_assigned', 'cancelled'],
+  reported: ['triaged', 'responder_assigned', 'dispatched', 'cancelled'],
+  triaged: ['responder_assigned', 'dispatched', 'cancelled'],
   responder_assigned: ['dispatched', 'cancelled'],
   dispatched: ['at_facility', 'resolved', 'cancelled'],
   at_facility: ['resolved'],
@@ -57,17 +57,27 @@ async function listForUser({ role, userId, status }) {
 
   if (role === 'student') {
     params.push(userId);
-    where += ` AND student_id = $${params.length}`;
+    where += ` AND i.student_id = $${params.length}`;
   }
   if (status) {
     params.push(status);
-    where += ` AND status = $${params.length}`;
+    where += ` AND i.status = $${params.length}`;
   }
 
   const { rows } = await pool.query(
-    `SELECT i.*, s.full_name AS student_name, f.name AS facility_name, r.full_name AS responder_name
+    `SELECT i.*, 
+            s.full_name AS student_name, 
+            s.matric_number,
+            s.phone AS student_phone,
+            sp.blood_group,
+            sp.genotype,
+            sp.allergies,
+            sp.chronic_conditions,
+            f.name AS facility_name, 
+            r.full_name AS responder_name
      FROM incidents i
      JOIN users s ON s.id = i.student_id
+     LEFT JOIN student_profiles sp ON sp.student_id = s.id
      LEFT JOIN facilities f ON f.id = i.nearest_facility_id
      LEFT JOIN users r ON r.id = i.assigned_responder_id
      WHERE ${where}
