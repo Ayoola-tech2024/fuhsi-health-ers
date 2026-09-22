@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
 import { 
@@ -91,10 +92,20 @@ export default function StudentProfilePage() {
               </p>
             </div>
           </div>
-          <span className="inline-flex items-center space-x-1 px-3 py-1 bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 rounded-full text-xs font-semibold">
-            <ShieldCheck className="w-3.5 h-3.5" />
-            <span>Verified Record</span>
-          </span>
+          <div className="flex items-center space-x-2">
+            <Link
+              to="/register"
+              className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold transition-colors shadow-sm"
+            >
+              Sign Up
+            </Link>
+            <Link
+              to="/login"
+              className="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-bold transition-colors border border-white/20"
+            >
+              Sign In
+            </Link>
+          </div>
         </div>
       </div>
 

@@ -147,17 +147,26 @@ export default function SOSPage() {
             </div>
           </div>
 
-          {/* Notification Bell with Badge */}
-          <div className="relative">
-            <button
-              onClick={() => setShowNotificationsModal(true)}
-              className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 flex items-center justify-center transition-colors"
+          {/* Top Right: Sign Up / Sign In & Bell */}
+          <div className="flex items-center space-x-2">
+            <Link
+              to="/register"
+              className="px-3 py-1.5 rounded-xl bg-red-600/90 hover:bg-red-600 text-white text-[11px] font-bold shadow-sm transition-colors border border-red-400/40 flex items-center space-x-1"
             >
-              <Bell className="w-5 h-5 text-white" />
-            </button>
-            <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-[#E02424] text-white text-[10px] font-extrabold flex items-center justify-center shadow border-2 border-[#0D2040]">
-              3
-            </span>
+              <span>Sign Up</span>
+            </Link>
+
+            <div className="relative">
+              <button
+                onClick={() => setShowNotificationsModal(true)}
+                className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 flex items-center justify-center transition-colors"
+              >
+                <Bell className="w-4 h-4 text-white" />
+              </button>
+              <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-[#E02424] text-white text-[9px] font-extrabold flex items-center justify-center shadow border-2 border-[#0D2040]">
+                3
+              </span>
+            </div>
           </div>
         </div>
       </div>
