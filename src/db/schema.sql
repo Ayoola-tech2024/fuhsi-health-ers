@@ -152,9 +152,22 @@ CREATE TABLE IF NOT EXISTS notifications (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- Doctor appointment booking requests
+CREATE TABLE IF NOT EXISTS bookings (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  student_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  physician TEXT NOT NULL,
+  appointment_slot TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pending', -- pending, confirmed, cancelled
+  notes TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 CREATE INDEX IF NOT EXISTS idx_incidents_student ON incidents(student_id);
 CREATE INDEX IF NOT EXISTS idx_incidents_status ON incidents(status);
 CREATE INDEX IF NOT EXISTS idx_incident_locations_incident ON incident_locations(incident_id);
 CREATE INDEX IF NOT EXISTS idx_incident_logs_incident ON incident_logs(incident_id);
 CREATE INDEX IF NOT EXISTS idx_clinical_entries_student ON clinical_entries(student_id);
 CREATE INDEX IF NOT EXISTS idx_emergency_contacts_student ON emergency_contacts(student_id);
+CREATE INDEX IF NOT EXISTS idx_bookings_student ON bookings(student_id);

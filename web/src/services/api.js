@@ -67,4 +67,14 @@ export const api = {
   listIncidents: (status) => request(`/incidents${status ? `?status=${status}` : ''}`),
   updateIncidentStatus: (id, payload) => request(`/incidents/${id}/status`, { method: 'PATCH', body: JSON.stringify(payload) }),
   updateIncidentLocation: (id, coords) => request(`/incidents/${id}/location`, { method: 'POST', body: JSON.stringify(coords) }),
+
+  // Doctor bookings
+  createBooking: (payload) => request('/bookings', { method: 'POST', body: JSON.stringify(payload) }),
+  listBookings: () => request('/bookings'),
+
+  // Campus responders / first-aiders
+  listResponders: () => request('/bookings/responders'),
+
+  // Notifications (user's personal alerts)
+  listNotifications: () => request('/incidents?status=reported'),
 };

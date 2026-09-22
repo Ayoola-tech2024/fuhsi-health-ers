@@ -9,6 +9,7 @@ const clinicalRoutes = require('./routes/clinicalRoutes');
 const contactRoutes = require('./routes/contactRoutes');
 const facilityRoutes = require('./routes/facilityRoutes');
 const incidentRoutes = require('./routes/incidentRoutes');
+const bookingRoutes = require('./routes/bookingRoutes');
 const { notFound, errorHandler } = require('./middleware/errorHandler');
 
 const app = express();
@@ -50,6 +51,7 @@ app.use('/api/clinical-entries', clinicalRoutes);
 app.use('/api/contacts', contactRoutes);
 app.use('/api/facilities', facilityRoutes);
 app.use('/api/incidents', incidentRoutes);
+app.use('/api/bookings', bookingRoutes);
 
 app.use(notFound);
 app.use(errorHandler);

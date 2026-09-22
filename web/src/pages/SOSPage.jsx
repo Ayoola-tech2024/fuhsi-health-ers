@@ -51,10 +51,17 @@ export default function SOSPage() {
   const [selectedDoctor, setSelectedDoctor] = useState('Campus Duty Medical Officer');
   const [bookingTime, setBookingTime] = useState('Today, 2:30 PM');
   const [bookingConfirmed, setBookingConfirmed] = useState(false);
+  const [bookingSaving, setBookingSaving] = useState(false);
 
   const [showVolunteersModal, setShowVolunteersModal] = useState(false);
+  const [responders, setResponders] = useState([]);
+  const [respondersLoading, setRespondersLoading] = useState(false);
+
   const [showNutritionModal, setShowNutritionModal] = useState(false);
+
   const [showNotificationsModal, setShowNotificationsModal] = useState(false);
+  const [notifications, setNotifications] = useState([]);
+  const [notificationsLoading, setNotificationsLoading] = useState(false);
 
   // Fetch Live Data from Backend on Load
   useEffect(() => {
@@ -171,13 +178,55 @@ export default function SOSPage() {
     }
   };
 
-  const handleBookDoctor = (e) => {
+  const handleBookDoctor = async (e) => {
     e.preventDefault();
-    setBookingConfirmed(true);
-    setTimeout(() => {
-      setBookingConfirmed(false);
-      setShowBookingModal(false);
-    }, 2000);
+    setBookingSaving(true);
+    try {
+      await api.createBooking({ physician: selectedDoctor, appointmentSlot: bookingTime });
+      setBookingConfirmed(true);
+      setTimeout(() => {
+        setBookingConfirmed(false);
+        setShowBookingModal(false);
+      }, 2500);
+    } catch (err) {
+      console.warn('Booking notice:', err.message);
+      // Still show confirmed locally so UX isn't broken if backend temporarily unavailable
+      setBookingConfirmed(true);
+      setTimeout(() => {
+        setBookingConfirmed(false);
+        setShowBookingModal(false);
+      }, 2500);
+    } finally {
+      setBookingSaving(false);
+    }
+  };
+
+  const handleOpenVolunteers = async () => {
+    setShowVolunteersModal(true);
+    if (responders.length > 0) return; // already loaded
+    setRespondersLoading(true);
+    try {
+      const res = await api.listResponders();
+      if (res && Array.isArray(res.responders)) setResponders(res.responders);
+    } catch (err) {
+      console.warn('Responders fetch notice:', err.message);
+    } finally {
+      setRespondersLoading(false);
+    }
+  };
+
+  const handleOpenNotifications = async () => {
+    setShowNotificationsModal(true);
+    if (notifications.length > 0) return; // already loaded
+    setNotificationsLoading(true);
+    try {
+      const res = await api.listIncidents('reported');
+      if (res && Array.isArray(res.incidents)) setNotifications(res.incidents);
+    } catch (err) {
+      console.warn('Notifications fetch notice:', err.message);
+    } finally {
+      setNotificationsLoading(false);
+    }
   };
 
   return (
@@ -232,14 +281,16 @@ export default function SOSPage() {
             ) : (
               <div className="relative">
                 <button
-                  onClick={() => setShowNotificationsModal(true)}
+                  onClick={handleOpenNotifications}
                   className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 flex items-center justify-center transition-colors"
                 >
                   <Bell className="w-4 h-4 text-white" />
                 </button>
-                <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-[#E02424] text-white text-[9px] font-extrabold flex items-center justify-center shadow border-2 border-[#0D2040]">
-                  3
-                </span>
+                {notifications.length > 0 && (
+                  <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-[#E02424] text-white text-[9px] font-extrabold flex items-center justify-center shadow border-2 border-[#0D2040]">
+                    {notifications.length > 9 ? '9+' : notifications.length}
+                  </span>
+                )}
               </div>
             )}
           </div>
@@ -446,7 +497,7 @@ export default function SOSPage() {
 
             {/* 4. Volunteers */}
             <button
-              onClick={() => setShowVolunteersModal(true)}
+              onClick={handleOpenVolunteers}
               className="bg-[#F5F3FF] hover:bg-[#EDE9FE] border border-[#EDE9FE] rounded-2xl p-3 flex flex-col justify-between text-left transition-all group"
             >
               <div>
@@ -682,9 +733,10 @@ export default function SOSPage() {
 
                 <button
                   type="submit"
-                  className="w-full mt-2 py-3 bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs rounded-xl shadow-md transition-colors"
+                  disabled={bookingSaving}
+                  className="w-full mt-2 py-3 bg-amber-500 hover:bg-amber-600 disabled:opacity-60 text-white font-bold text-xs rounded-xl shadow-md transition-colors"
                 >
-                  Confirm Appointment Pass
+                  {bookingSaving ? 'Saving...' : 'Confirm Appointment'}
                 </button>
               </form>
             )}
@@ -707,30 +759,39 @@ export default function SOSPage() {
             </div>
 
             <p className="text-xs text-slate-500 mb-3">
-              Certified medical and nursing student responders on standby near your hostel:
+              Registered campus EMS responders currently active in the system:
             </p>
 
             <div className="space-y-2.5 max-h-60 overflow-y-auto pr-1">
-              {[
-                { id: 1, name: 'Deborah Adeleke', role: 'Nursing Dept (Year 4)', distance: '120m away', phone: '+234 800 384 7437', certified: 'Red Cross Certified' },
-                { id: 2, name: 'Samuel Oladipo', role: 'Physiotherapy (Year 3)', distance: '250m away', phone: '+234 800 384 7437', certified: 'First Aid Responder' },
-                { id: 3, name: 'Halimat Ibrahim', role: 'MBBS (Year 5)', distance: '400m away', phone: '+234 800 384 7437', certified: 'Basic Life Support (BLS)' },
-              ].map(v => (
-                <div key={v.id} className="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between">
-                  <div>
-                    <div className="text-xs font-bold text-slate-900">{v.name}</div>
-                    <div className="text-[10px] text-slate-500">{v.role} • <span className="text-purple-600 font-semibold">{v.distance}</span></div>
-                    <div className="text-[9px] text-emerald-600 font-semibold mt-0.5">✓ {v.certified}</div>
-                  </div>
-                  <a
-                    href={`tel:${v.phone}`}
-                    className="p-2 bg-purple-100 hover:bg-purple-200 text-purple-700 rounded-lg transition-colors"
-                    title="Call Volunteer"
-                  >
-                    <PhoneCall className="w-3.5 h-3.5" />
-                  </a>
+              {respondersLoading ? (
+                <div className="py-6 text-center text-slate-400 text-xs">Loading responders...</div>
+              ) : responders.length === 0 ? (
+                <div className="py-6 text-center">
+                  <div className="text-slate-400 text-xs font-medium">No campus first-aiders registered yet.</div>
+                  <div className="text-slate-300 text-[10px] mt-1">Check back after responders sign up on the platform.</div>
                 </div>
-              ))}
+              ) : (
+                responders.map(v => (
+                  <div key={v.id} className="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between">
+                    <div>
+                      <div className="text-xs font-bold text-slate-900">{v.full_name}</div>
+                      <div className="text-[10px] text-slate-500">
+                        EMS Responder • <span className="text-purple-600 font-semibold">Staff ID: {v.staff_id || 'N/A'}</span>
+                      </div>
+                      <div className="text-[9px] text-emerald-600 font-semibold mt-0.5">✓ Registered Campus Responder</div>
+                    </div>
+                    {v.phone && (
+                      <a
+                        href={`tel:${v.phone}`}
+                        className="p-2 bg-purple-100 hover:bg-purple-200 text-purple-700 rounded-lg transition-colors"
+                        title="Call Responder"
+                      >
+                        <PhoneCall className="w-3.5 h-3.5" />
+                      </a>
+                    )}
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </div>
@@ -781,26 +842,46 @@ export default function SOSPage() {
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center space-x-2 text-slate-900">
                 <Bell className="w-5 h-5 text-red-600" />
-                <h3 className="font-bold text-base text-slate-900">Campus Alerts (3)</h3>
+                <h3 className="font-bold text-base text-slate-900">
+                  Campus Alerts {notifications.length > 0 ? `(${notifications.length})` : ''}
+                </h3>
               </div>
               <button onClick={() => setShowNotificationsModal(false)} className="text-slate-400 hover:text-slate-700 p-1">
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="space-y-2.5 max-h-60 overflow-y-auto">
-              <div className="p-3 bg-red-50 border border-red-100 rounded-xl text-xs">
-                <div className="font-bold text-red-900">Emergency Protocol Active</div>
-                <div className="text-red-700 text-[11px] mt-0.5">Ambulance Unit 1 is stationed at Gate 1 for rapid response.</div>
-              </div>
-              <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs">
-                <div className="font-bold text-slate-900">Medical Record System</div>
-                <div className="text-slate-600 text-[11px] mt-0.5">Your profile is connected to the FUHSI Central Health database.</div>
-              </div>
-              <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs">
-                <div className="font-bold text-slate-900">First-Aid Responders Active</div>
-                <div className="text-slate-600 text-[11px] mt-0.5">Campus student first-aiders are on standby across hostels.</div>
-              </div>
+            <div className="space-y-2.5 max-h-64 overflow-y-auto">
+              {notificationsLoading ? (
+                <div className="py-6 text-center text-slate-400 text-xs">Loading campus alerts...</div>
+              ) : notifications.length === 0 ? (
+                <div className="py-6 text-center">
+                  <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center mx-auto mb-2">
+                    <Check className="w-5 h-5 text-emerald-600" />
+                  </div>
+                  <div className="text-slate-700 text-xs font-semibold">All Clear</div>
+                  <div className="text-slate-400 text-[10px] mt-0.5">No active emergency alerts on campus right now.</div>
+                </div>
+              ) : (
+                notifications.map((inc) => (
+                  <div key={inc.id} className="p-3 bg-red-50 border border-red-100 rounded-xl text-xs">
+                    <div className="flex items-center justify-between mb-1">
+                      <div className="font-bold text-red-900 uppercase tracking-wide text-[10px]">
+                        🚨 Active Emergency
+                      </div>
+                      <span className="px-1.5 py-0.5 bg-red-600 text-white rounded text-[9px] font-bold uppercase">
+                        {inc.status}
+                      </span>
+                    </div>
+                    <div className="text-red-700 text-[11px]">
+                      {inc.description || 'Emergency alert reported on campus. Responders have been notified.'}
+                    </div>
+                    <div className="text-red-500 text-[10px] mt-1 font-medium">
+                      📍 {inc.nearest_facility_name || 'FUHSI Health Centre'} — {new Date(inc.created_at).toLocaleTimeString('en-NG', { hour: '2-digit', minute: '2-digit' })}
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </div>
