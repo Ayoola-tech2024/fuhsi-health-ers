@@ -1,4 +1,4 @@
-const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api';
+const API_BASE = import.meta.env.VITE_API_BASE_URL || (import.meta.env.DEV ? '/api' : 'https://fuhsi-emergency-response-backend.onrender.com/api');
 
 function getAuthHeader() {
   const token = localStorage.getItem('fuhsi_token');

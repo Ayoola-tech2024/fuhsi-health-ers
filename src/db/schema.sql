@@ -4,19 +4,33 @@
 
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
-CREATE TYPE user_role AS ENUM ('student', 'clinician', 'responder', 'admin');
-CREATE TYPE incident_status AS ENUM (
-  'reported',        -- SOS just triggered
-  'triaged',         -- clinician/dispatcher reviewed
-  'responder_assigned',
-  'dispatched',       -- responder en route
-  'at_facility',
-  'resolved',
-  'cancelled'
-);
-CREATE TYPE verification_status AS ENUM ('pending', 'verified', 'rejected');
+DO $$ BEGIN
+  CREATE TYPE user_role AS ENUM ('student', 'clinician', 'responder', 'admin');
+EXCEPTION
+  WHEN duplicate_object THEN null;
+END $$;
 
-CREATE TABLE users (
+DO $$ BEGIN
+  CREATE TYPE incident_status AS ENUM (
+    'reported',        -- SOS just triggered
+    'triaged',         -- clinician/dispatcher reviewed
+    'responder_assigned',
+    'dispatched',       -- responder en route
+    'at_facility',
+    'resolved',
+    'cancelled'
+  );
+EXCEPTION
+  WHEN duplicate_object THEN null;
+END $$;
+
+DO $$ BEGIN
+  CREATE TYPE verification_status AS ENUM ('pending', 'verified', 'rejected');
+EXCEPTION
+  WHEN duplicate_object THEN null;
+END $$;
+
+CREATE TABLE IF NOT EXISTS users (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   email TEXT UNIQUE NOT NULL,
   password_hash TEXT NOT NULL,
@@ -31,7 +45,7 @@ CREATE TABLE users (
 );
 
 -- Student-owned profile: the student can edit this directly.
-CREATE TABLE student_profiles (
+CREATE TABLE IF NOT EXISTS student_profiles (
   student_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
   date_of_birth DATE,
   gender TEXT,
@@ -47,7 +61,7 @@ CREATE TABLE student_profiles (
 );
 
 -- Clinician-entered/verified clinical information. Append-oriented + audited.
-CREATE TABLE clinical_entries (
+CREATE TABLE IF NOT EXISTS clinical_entries (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   student_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   entered_by UUID NOT NULL REFERENCES users(id),
@@ -61,7 +75,7 @@ CREATE TABLE clinical_entries (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE TABLE clinical_entry_audit (
+CREATE TABLE IF NOT EXISTS clinical_entry_audit (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   clinical_entry_id UUID NOT NULL REFERENCES clinical_entries(id) ON DELETE CASCADE,
   actor_id UUID NOT NULL REFERENCES users(id),
@@ -71,7 +85,7 @@ CREATE TABLE clinical_entry_audit (
 );
 
 -- Student-owned trusted emergency contacts.
-CREATE TABLE emergency_contacts (
+CREATE TABLE IF NOT EXISTS emergency_contacts (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   student_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
@@ -81,7 +95,7 @@ CREATE TABLE emergency_contacts (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE TABLE facilities (
+CREATE TABLE IF NOT EXISTS facilities (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name TEXT NOT NULL,
   facility_type TEXT NOT NULL DEFAULT 'clinic', -- clinic, dispensary, hospital
@@ -93,7 +107,7 @@ CREATE TABLE facilities (
 );
 
 -- Core ERS flow: SOS -> location -> triage -> responder -> facility -> record
-CREATE TABLE incidents (
+CREATE TABLE IF NOT EXISTS incidents (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   student_id UUID NOT NULL REFERENCES users(id),
   status incident_status NOT NULL DEFAULT 'reported',
@@ -109,7 +123,7 @@ CREATE TABLE incidents (
 );
 
 -- Live location trail for an active incident.
-CREATE TABLE incident_locations (
+CREATE TABLE IF NOT EXISTS incident_locations (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   incident_id UUID NOT NULL REFERENCES incidents(id) ON DELETE CASCADE,
   latitude DOUBLE PRECISION NOT NULL,
@@ -118,7 +132,7 @@ CREATE TABLE incident_locations (
 );
 
 -- Full audit trail / timeline of an incident.
-CREATE TABLE incident_logs (
+CREATE TABLE IF NOT EXISTS incident_logs (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   incident_id UUID NOT NULL REFERENCES incidents(id) ON DELETE CASCADE,
   actor_id UUID REFERENCES users(id),
@@ -128,7 +142,7 @@ CREATE TABLE incident_logs (
 );
 
 -- Notification stub (channel-agnostic; wire to SMS/push/email provider later)
-CREATE TABLE notifications (
+CREATE TABLE IF NOT EXISTS notifications (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID REFERENCES users(id),
   incident_id UUID REFERENCES incidents(id),
@@ -138,9 +152,9 @@ CREATE TABLE notifications (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX idx_incidents_student ON incidents(student_id);
-CREATE INDEX idx_incidents_status ON incidents(status);
-CREATE INDEX idx_incident_locations_incident ON incident_locations(incident_id);
-CREATE INDEX idx_incident_logs_incident ON incident_logs(incident_id);
-CREATE INDEX idx_clinical_entries_student ON clinical_entries(student_id);
-CREATE INDEX idx_emergency_contacts_student ON emergency_contacts(student_id);
+CREATE INDEX IF NOT EXISTS idx_incidents_student ON incidents(student_id);
+CREATE INDEX IF NOT EXISTS idx_incidents_status ON incidents(status);
+CREATE INDEX IF NOT EXISTS idx_incident_locations_incident ON incident_locations(incident_id);
+CREATE INDEX IF NOT EXISTS idx_incident_logs_incident ON incident_logs(incident_id);
+CREATE INDEX IF NOT EXISTS idx_clinical_entries_student ON clinical_entries(student_id);
+CREATE INDEX IF NOT EXISTS idx_emergency_contacts_student ON emergency_contacts(student_id);
