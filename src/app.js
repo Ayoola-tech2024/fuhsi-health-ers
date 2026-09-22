@@ -25,7 +25,24 @@ app.use(
 app.use(express.json({ limit: '1mb' }));
 app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
 
-app.get('/health', (req, res) => res.json({ status: 'ok', service: 'fuhsi-ers-backend', version: '1.0.1-enterprise' }));
+app.get('/health', (req, res) => {
+  let dbHost = 'none';
+  try {
+    if (process.env.DATABASE_URL) {
+      const parsed = new URL(process.env.DATABASE_URL.replace(/^(postgres|postgresql):/, 'http:'));
+      dbHost = parsed.hostname + (parsed.port ? `:${parsed.port}` : '');
+    }
+  } catch (e) {
+    dbHost = 'parse_error';
+  }
+  res.json({
+    status: 'ok',
+    service: 'fuhsi-ers-backend',
+    version: '1.0.1-enterprise',
+    hasDbUrl: Boolean(process.env.DATABASE_URL),
+    dbHost,
+  });
+});
 
 app.use('/api/auth', authRoutes);
 app.use('/api/profile', profileRoutes);
