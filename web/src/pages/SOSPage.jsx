@@ -108,22 +108,23 @@ export default function SOSPage() {
     return () => { isMounted = false; };
   }, [isAuthenticated, user]);
 
+  function formatArrayField(val, fallback = 'None') {
+    if (!val) return fallback;
+    if (Array.isArray(val)) return val.length > 0 ? val.join(', ') : fallback;
+    if (typeof val === 'string') return val.trim() || fallback;
+    return fallback;
+  }
+
   // Derived user display properties from actual database record
-  const displayName = user?.full_name || (isAuthenticated ? user?.email?.split('@')[0] : 'Guest Visitor');
-  const displayRole = user?.role
+  const displayName = (user && user.full_name) || (user && user.email ? user.email.split('@')[0] : '') || 'Guest Visitor';
+  const displayRole = (user && typeof user.role === 'string')
     ? `${user.role.toUpperCase()} • FUHSI ${user.matric_number ? `(${user.matric_number})` : user.staff_id ? `(${user.staff_id})` : ''}`
-    : 'Not Signed In • Emergency Mode';
+    : 'Campus Emergency Mode • FUHSI';
   const bloodGroup = profile?.blood_group || 'Not Set';
-  const allergiesDisplay = (profile?.allergies && profile.allergies.length > 0)
-    ? profile.allergies.join(', ')
-    : 'None Reported';
-  const currentMedsDisplay = (profile?.current_medications && profile.current_medications.length > 0)
-    ? profile.current_medications.join(', ')
-    : 'None';
-  const chronicIllnessDisplay = (profile?.chronic_conditions && profile.chronic_conditions.length > 0)
-    ? profile.chronic_conditions.join(', ')
-    : 'None';
-  const emergencyContactsCount = contacts.length;
+  const allergiesDisplay = formatArrayField(profile?.allergies, 'None Reported');
+  const currentMedsDisplay = formatArrayField(profile?.current_medications, 'None');
+  const chronicIllnessDisplay = formatArrayField(profile?.chronic_conditions, 'None');
+  const emergencyContactsCount = Array.isArray(contacts) ? contacts.length : 0;
 
   // Countdown timer for SOS trigger
   useEffect(() => {
@@ -258,7 +259,7 @@ export default function SOSPage() {
             <div className="relative">
               {/* Dynamic user initial avatar */}
               <div className="w-12 h-12 rounded-2xl bg-[#0D2040] text-white flex items-center justify-center font-extrabold text-base border border-slate-200 shadow-sm">
-                {displayName.charAt(0).toUpperCase()}
+                {(displayName || 'G').charAt(0).toUpperCase()}
               </div>
               <span className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 ${isAuthenticated ? 'bg-emerald-500' : 'bg-amber-500'} border-2 border-white rounded-full`} />
             </div>

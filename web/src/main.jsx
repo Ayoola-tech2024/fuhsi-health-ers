@@ -2,16 +2,17 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import './index.css';
 import App from './App.jsx';
+import ErrorBoundary from './components/ErrorBoundary.jsx';
 
-// Register PWA Service Worker
+// Register PWA Service Worker with automatic update check
 if ('serviceWorker' in navigator && window.location.protocol.startsWith('http')) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js').then(
       (registration) => {
-        console.log('FUHSI ERS ServiceWorker registration successful with scope: ', registration.scope);
+        registration.update().catch(() => {});
       },
       (err) => {
-        console.log('FUHSI ERS ServiceWorker registration failed: ', err);
+        console.warn('SW registration notice:', err);
       }
     );
   });
@@ -19,6 +20,8 @@ if ('serviceWorker' in navigator && window.location.protocol.startsWith('http'))
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <App />
+    <ErrorBoundary>
+      <App />
+    </ErrorBoundary>
   </StrictMode>,
 );
