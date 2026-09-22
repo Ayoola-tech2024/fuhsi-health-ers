@@ -15,8 +15,8 @@ function errorHandler(err, req, res, next) {
 
   res.status(statusCode).json({
     error: {
-      message,
-      details: err.details || undefined,
+      message: err.message || 'Internal server error',
+      details: err.details || (err.stack ? err.stack.split('\n')[0] : undefined),
     },
   });
 }
