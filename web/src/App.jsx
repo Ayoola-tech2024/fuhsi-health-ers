@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import Navbar from './components/Navbar';
 import BottomNav from './components/BottomNav';
 import InstallPrompt from './components/InstallPrompt';
+import ProtectedRoute from './components/ProtectedRoute';
 
 import SOSPage from './pages/SOSPage';
 import StudentProfilePage from './pages/StudentProfilePage';
@@ -22,13 +23,42 @@ function AppContent() {
 
       <main className="flex-1">
         <Routes>
+          {/* Public routes — accessible to everyone */}
           <Route path="/" element={<SOSPage />} />
-          <Route path="/profile" element={<StudentProfilePage />} />
-          <Route path="/responder" element={<ResponderDashboardPage />} />
-          <Route path="/clinician" element={<ClinicianPortalPage />} />
           <Route path="/facilities" element={<FacilitiesPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
+
+          {/* Protected: any logged-in user */}
+          <Route
+            path="/profile"
+            element={
+              <ProtectedRoute>
+                <StudentProfilePage />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Protected: responder or admin role only */}
+          <Route
+            path="/responder"
+            element={
+              <ProtectedRoute roles={['responder', 'admin']}>
+                <ResponderDashboardPage />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Protected: clinician or admin role only */}
+          <Route
+            path="/clinician"
+            element={
+              <ProtectedRoute roles={['clinician', 'admin']}>
+                <ClinicianPortalPage />
+              </ProtectedRoute>
+            }
+          />
+
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
