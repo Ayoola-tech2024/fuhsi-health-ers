@@ -1,5 +1,11 @@
 const API_BASE = import.meta.env.VITE_API_BASE_URL || (import.meta.env.DEV ? '/api' : 'https://fuhsi-emergency-response-backend.onrender.com/api');
 
+// Pre-warm the backend server quietly on page load
+if (typeof window !== 'undefined') {
+  const healthUrl = API_BASE.replace(/\/api$/, '') + '/health';
+  fetch(healthUrl, { method: 'GET', keepalive: true }).catch(() => {});
+}
+
 function getAuthHeader() {
   const token = localStorage.getItem('fuhsi_token');
   return token ? { Authorization: `Bearer ${token}` } : {};

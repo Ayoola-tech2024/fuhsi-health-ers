@@ -1,0 +1,22 @@
+name: Keep Render Backend Awake
+
+on:
+  schedule:
+    # Runs every 14 minutes (Render free instances sleep after 15 minutes)
+    - cron: '*/14 * * * *'
+  workflow_dispatch: # Allows manual trigger from GitHub Actions tab
+
+jobs:
+  ping-backend:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping FUHSI Emergency Backend
+        run: |
+          echo "Pinging FUHSI backend to prevent cold starts..."
+          RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" https://fuhsi-emergency-response-backend.onrender.com/health)
+          echo "HTTP Response Status: $RESPONSE"
+          if [ "$RESPONSE" -eq 200 ]; then
+            echo "Backend is alive and responding!"
+          else
+            echo "Warning: Response code was $RESPONSE"
+          fi
