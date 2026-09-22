@@ -1,24 +1,32 @@
 {
-  "short_name": "FUHSI ERS",
+  "id": "/",
   "name": "FUHSI Health Emergency Service",
+  "short_name": "FUHSI ERS",
+  "description": "Federal University of Health Sciences, Ila-Orangun - Emergency Response System (ERS)",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#F8FAFC",
+  "theme_color": "#0D2040",
   "icons": [
     {
       "src": "/icon-192.png",
-      "type": "image/png",
       "sizes": "192x192",
+      "type": "image/png",
       "purpose": "any maskable"
     },
     {
       "src": "/icon-512.png",
-      "type": "image/png",
       "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
       "purpose": "any maskable"
     }
-  ],
-  "start_url": "/",
-  "background_color": "#0f172a",
-  "theme_color": "#dc2626",
-  "display": "standalone",
-  "orientation": "portrait",
-  "scope": "/"
+  ]
 }
