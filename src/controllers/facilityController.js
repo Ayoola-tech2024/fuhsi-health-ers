@@ -2,6 +2,7 @@ const facilityModel = require('../models/facilityModel');
 const { asyncHandler, ApiError } = require('../utils/helpers');
 
 const list = asyncHandler(async (req, res) => {
+  res.set('Cache-Control', 'public, max-age=1800, stale-while-revalidate=3600');
   const facilities = await facilityModel.listActive();
   res.json({ facilities });
 });

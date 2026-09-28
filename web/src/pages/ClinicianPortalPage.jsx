@@ -56,8 +56,14 @@ export default function ClinicianPortalPage() {
 
   useEffect(() => {
     fetchInboundEmergencies();
-    const interval = setInterval(fetchInboundEmergencies, 8000);
-    return () => clearInterval(interval);
+    const interval = setInterval(fetchInboundEmergencies, 3000);
+    window.addEventListener('focus', fetchInboundEmergencies);
+    document.addEventListener('visibilitychange', fetchInboundEmergencies);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', fetchInboundEmergencies);
+      document.removeEventListener('visibilitychange', fetchInboundEmergencies);
+    };
   }, []);
 
   const handleSelectInboundPatient = async (incident) => {

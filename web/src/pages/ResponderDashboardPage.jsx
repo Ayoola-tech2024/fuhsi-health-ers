@@ -55,21 +55,34 @@ export default function ResponderDashboardPage() {
     fetchIncidents();
     const interval = setInterval(() => {
       fetchIncidents();
-    }, 10000);
-    return () => clearInterval(interval);
+    }, 3000);
+    window.addEventListener('focus', fetchIncidents);
+    document.addEventListener('visibilitychange', fetchIncidents);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', fetchIncidents);
+      document.removeEventListener('visibilitychange', fetchIncidents);
+    };
   }, []);
 
   const handleUpdateStatus = async (incidentId, newStatus) => {
+    // 1. Optimistic instant local update (0ms latency feel)
+    setIncidents(prev => prev.map(inc => inc.id === incidentId ? { ...inc, status: newStatus } : inc));
+    if (selectedIncident?.id === incidentId) {
+      setSelectedIncident(prev => ({ ...prev, status: newStatus }));
+    }
+
     try {
       const res = await api.updateIncidentStatus(incidentId, { status: newStatus });
       if (res && res.incident) {
-        setIncidents(prev => prev.map(inc => inc.id === incidentId ? { ...inc, status: newStatus } : inc));
+        setIncidents(prev => prev.map(inc => inc.id === incidentId ? { ...inc, ...res.incident } : inc));
         if (selectedIncident?.id === incidentId) {
-          setSelectedIncident(prev => ({ ...prev, status: newStatus }));
+          setSelectedIncident(prev => ({ ...prev, ...res.incident }));
         }
       }
     } catch (err) {
       alert(err.message || 'Status transition error');
+      fetchIncidents(); // revert on failure
     }
   };
 

@@ -149,28 +149,36 @@ export default function SOSPage() {
     setCountdown(5);
   };
 
-  // Live Incident Polling when an emergency is active
+  // Live Incident Polling when an emergency is active (Turbo 2s sync)
   useEffect(() => {
     let pollInterval;
-    if (activeSOS && activeIncident?.id) {
-      pollInterval = setInterval(async () => {
-        try {
-          const res = await api.getIncident(activeIncident.id).catch(() => null);
-          if (res && res.incident) {
-            if (res.incident.status !== sosStatus) {
-              setSosStatus(res.incident.status);
-            }
-            if (res.incident.status === 'resolved' || res.incident.status === 'cancelled') {
-              setActiveSOS(false);
-            }
+    const fetchFreshStatus = async () => {
+      if (!activeIncident?.id) return;
+      try {
+        const res = await api.getIncident(activeIncident.id).catch(() => null);
+        if (res && res.incident) {
+          if (res.incident.status !== sosStatus) {
+            setSosStatus(res.incident.status);
           }
-        } catch (e) {
-          // ignore background poll errors
+          if (res.incident.status === 'resolved' || res.incident.status === 'cancelled') {
+            setActiveSOS(false);
+          }
         }
-      }, 5000);
+      } catch (e) {
+        // ignore background poll errors
+      }
+    };
+
+    if (activeSOS && activeIncident?.id) {
+      fetchFreshStatus();
+      pollInterval = setInterval(fetchFreshStatus, 2000);
+      window.addEventListener('focus', fetchFreshStatus);
+      document.addEventListener('visibilitychange', fetchFreshStatus);
     }
     return () => {
       if (pollInterval) clearInterval(pollInterval);
+      window.removeEventListener('focus', fetchFreshStatus);
+      document.removeEventListener('visibilitychange', fetchFreshStatus);
     };
   }, [activeSOS, activeIncident, sosStatus]);
 
