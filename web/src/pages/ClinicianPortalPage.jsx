@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
 import { 
@@ -13,7 +13,14 @@ import {
   CheckCircle2, 
   Lock,
   AlertCircle,
-  Loader2
+  Loader2,
+  Activity,
+  Bell,
+  Droplet,
+  Asterisk,
+  HeartPulse,
+  ArrowRight,
+  ShieldAlert
 } from 'lucide-react';
 
 export default function ClinicianPortalPage() {
@@ -24,10 +31,67 @@ export default function ClinicianPortalPage() {
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState(null);
 
+  const [inboundIncidents, setInboundIncidents] = useState([]);
+  const [inboundLoading, setInboundLoading] = useState(true);
+
   const [newEntryType, setNewEntryType] = useState('allergy_confirmation');
   const [entryText, setEntryText] = useState('');
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+
+  // Poll active emergencies for incoming patient feed
+  const fetchInboundEmergencies = async () => {
+    try {
+      const res = await api.listIncidents();
+      if (res && Array.isArray(res.incidents)) {
+        const active = res.incidents.filter(i => i.status !== 'resolved' && i.status !== 'cancelled');
+        setInboundIncidents(active);
+      }
+    } catch (e) {
+      // ignore
+    } finally {
+      setInboundLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchInboundEmergencies();
+    const interval = setInterval(fetchInboundEmergencies, 8000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const handleSelectInboundPatient = async (incident) => {
+    setSearching(true);
+    setSearchError(null);
+    setSelectedStudent(null);
+    setEntries([]);
+    setSearchQuery(incident.matric_number || incident.student_name || '');
+
+    try {
+      const identifier = incident.student_id || incident.matric_number;
+      const res = await api.getStudentProfile(identifier);
+      const studentData = res.student || res.profile;
+      if (studentData) {
+        setSelectedStudent({
+          ...studentData,
+          activeIncidentId: incident.id,
+          activeIncidentStatus: incident.status,
+          emergencyDescription: incident.description,
+        });
+        const studentId = studentData.id || studentData.student_id || incident.student_id;
+        if (studentId) {
+          const entryRes = await api.getClinicalEntries(studentId).catch(() => ({ entries: [] }));
+          if (entryRes && Array.isArray(entryRes.entries)) {
+            setEntries(entryRes.entries);
+          }
+        }
+      }
+    } catch (err) {
+      setSearchError(err.message || 'Failed to auto-load student EHR record');
+    } finally {
+      setSearching(false);
+    }
+  };
 
   const handleSearch = async (e) => {
     e?.preventDefault();
@@ -103,7 +167,7 @@ export default function ClinicianPortalPage() {
             <div>
               <h1 className="text-xl font-bold text-white">Clinician Verification Portal</h1>
               <p className="text-xs text-slate-300">
-                Official medical officer record verification & audit trail
+                Official medical officer record verification & emergency triage feed
               </p>
             </div>
           </div>
@@ -114,6 +178,85 @@ export default function ClinicianPortalPage() {
       </div>
 
       <div className="max-w-6xl mx-auto px-4 -mt-8 space-y-6">
+        {/* Inbound Emergency Alerts Feed */}
+        <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-200">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center space-x-2">
+              <span className={`w-2.5 h-2.5 rounded-full ${inboundIncidents.length > 0 ? 'bg-red-600 animate-ping' : 'bg-emerald-500'}`} />
+              <h2 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+                Inbound Emergency Alerts & Triage Feed ({inboundIncidents.length})
+              </h2>
+            </div>
+            <button
+              onClick={fetchInboundEmergencies}
+              className="text-[11px] font-semibold text-blue-600 hover:text-blue-800"
+            >
+              Refresh Feed
+            </button>
+          </div>
+
+          {inboundLoading ? (
+            <div className="py-4 text-center text-xs text-slate-400">Loading incoming alerts...</div>
+          ) : inboundIncidents.length === 0 ? (
+            <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center justify-between">
+              <div className="flex items-center space-x-2 text-emerald-800 text-xs">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                <span className="font-semibold">No active campus SOS emergencies right now.</span>
+              </div>
+              <span className="text-[10px] text-emerald-700 font-medium">All Units Standing By</span>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {inboundIncidents.map((inc) => (
+                <div key={inc.id} className="p-3.5 bg-red-50/80 border border-red-200 rounded-xl flex flex-col justify-between space-y-2">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <div className="flex items-center space-x-1.5">
+                        <span className="w-2 h-2 rounded-full bg-red-600 animate-pulse" />
+                        <h3 className="font-bold text-sm text-slate-900">{inc.student_name}</h3>
+                      </div>
+                      <p className="text-xs text-slate-600 mt-0.5">
+                        Matric: <span className="font-mono font-semibold">{inc.matric_number || 'N/A'}</span>
+                      </p>
+                    </div>
+                    <span className="px-2 py-0.5 bg-red-600 text-white rounded text-[10px] font-extrabold uppercase">
+                      {inc.status}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-1.5 py-1 text-center bg-white/80 rounded-lg p-1.5 border border-red-100 text-[10px]">
+                    <div>
+                      <span className="text-slate-400 block">Blood Group</span>
+                      <strong className="text-red-700 font-black">{inc.blood_group || 'Not Set'}</strong>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 block">Genotype</span>
+                      <strong className="text-slate-900 font-bold">{inc.genotype || 'Not Set'}</strong>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 block">Allergies</span>
+                      <strong className="text-slate-900 font-bold truncate block">{Array.isArray(inc.allergies) ? inc.allergies.join(', ') : 'None'}</strong>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-1">
+                    <span className="text-[10px] text-slate-500 truncate max-w-[180px]">
+                      📍 {inc.facility_name || 'Near Campus Clinic'}
+                    </span>
+                    <button
+                      onClick={() => handleSelectInboundPatient(inc)}
+                      className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-bold flex items-center space-x-1 transition-colors shadow-sm"
+                    >
+                      <span>Prepare EHR & Triage</span>
+                      <ArrowRight className="w-3 h-3" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
         {/* Search Header */}
         <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-200">
           <form onSubmit={handleSearch} className="flex flex-col sm:flex-row items-center gap-3">

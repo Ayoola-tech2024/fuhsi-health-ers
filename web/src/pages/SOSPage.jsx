@@ -149,6 +149,92 @@ export default function SOSPage() {
     setCountdown(5);
   };
 
+  // Live Incident Polling when an emergency is active
+  useEffect(() => {
+    let pollInterval;
+    if (activeSOS && activeIncident?.id) {
+      pollInterval = setInterval(async () => {
+        try {
+          const res = await api.getIncident(activeIncident.id).catch(() => null);
+          if (res && res.incident) {
+            if (res.incident.status !== sosStatus) {
+              setSosStatus(res.incident.status);
+            }
+            if (res.incident.status === 'resolved' || res.incident.status === 'cancelled') {
+              setActiveSOS(false);
+            }
+          }
+        } catch (e) {
+          // ignore background poll errors
+        }
+      }, 5000);
+    }
+    return () => {
+      if (pollInterval) clearInterval(pollInterval);
+    };
+  }, [activeSOS, activeIncident, sosStatus]);
+
+  const getDispatchStatusInfo = (status) => {
+    switch (status) {
+      case 'reported':
+        return {
+          title: 'Alert Received • Awaiting Dispatch',
+          unitLabel: 'Pending EMS Assignment',
+          unitSub: 'Alert received by Campus EMS & Clinic. Standing by for unit dispatch.',
+          badgeColor: 'bg-amber-500 text-white',
+          pulse: true,
+        };
+      case 'triaged':
+        return {
+          title: 'Triage Review in Progress',
+          unitLabel: 'Triage Reviewing',
+          unitSub: 'Campus medical officer is reviewing your profile & vitals.',
+          badgeColor: 'bg-blue-600 text-white',
+          pulse: true,
+        };
+      case 'responder_assigned':
+        return {
+          title: 'EMS Unit Assigned',
+          unitLabel: 'Ambulance Unit 1 (Assigned)',
+          unitSub: 'Unit assigned and preparing equipment for departure.',
+          badgeColor: 'bg-indigo-600 text-white',
+          pulse: true,
+        };
+      case 'dispatched':
+        return {
+          title: 'Ambulance Dispatched (En Route)',
+          unitLabel: 'Ambulance Unit 1 (En Route 🚑)',
+          unitSub: 'First-aiders dispatched and moving toward your GPS location.',
+          badgeColor: 'bg-emerald-600 text-white',
+          pulse: false,
+        };
+      case 'at_facility':
+        return {
+          title: 'Arrived at Medical Station',
+          unitLabel: 'Under Clinical Care',
+          unitSub: 'Patient handover completed at FUHSI Health Centre.',
+          badgeColor: 'bg-purple-600 text-white',
+          pulse: false,
+        };
+      case 'resolved':
+        return {
+          title: 'Emergency Case Resolved',
+          unitLabel: 'Assistance Rendered',
+          unitSub: 'Incident successfully resolved by campus responders.',
+          badgeColor: 'bg-slate-700 text-white',
+          pulse: false,
+        };
+      default:
+        return {
+          title: 'Emergency In Progress',
+          unitLabel: 'Awaiting Response',
+          unitSub: 'Emergency alert logged into system.',
+          badgeColor: 'bg-red-600 text-white',
+          pulse: true,
+        };
+    }
+  };
+
   const triggerEmergency = async () => {
     setActiveSOS(true);
     setSosStatus('reported');
@@ -325,13 +411,25 @@ export default function SOSPage() {
             </div>
           </div>
 
-          <div className="bg-[#ECFDF5] border border-[#A7F3D0] rounded-xl px-3 py-2 text-right">
-            <div className="flex items-center justify-end space-x-1 text-[#059669]">
-              <CheckCircle2 className="w-3.5 h-3.5" />
-              <span className="text-xs font-bold">You're Safe</span>
+          {activeSOS ? (
+            <div className="bg-red-50 border border-red-200 rounded-xl px-3 py-2 text-right">
+              <div className="flex items-center justify-end space-x-1.5 text-red-600">
+                <span className="w-2 h-2 rounded-full bg-red-600 animate-ping" />
+                <span className="text-xs font-extrabold uppercase tracking-tight">SOS Active</span>
+              </div>
+              <span className="text-[10px] text-red-700 block font-bold capitalize mt-0.5">
+                {sosStatus.replace(/_/g, ' ')}
+              </span>
             </div>
-            <span className="text-[10px] text-slate-500 block font-medium">Ready for SOS</span>
-          </div>
+          ) : (
+            <div className="bg-[#ECFDF5] border border-[#A7F3D0] rounded-xl px-3 py-2 text-right">
+              <div className="flex items-center justify-end space-x-1 text-[#059669]">
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                <span className="text-xs font-bold">You're Safe</span>
+              </div>
+              <span className="text-[10px] text-slate-500 block font-medium">Ready for SOS</span>
+            </div>
+          )}
         </div>
 
         {/* 3. Hero Emergency SOS Banner Card */}
@@ -390,46 +488,77 @@ export default function SOSPage() {
         </div>
 
         {/* Active Emergency Status Card (When SOS Triggered) */}
-        {activeSOS && (
-          <div className="bg-red-50 border border-red-200 rounded-2xl p-4 shadow-sm space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-2">
-                <span className="w-3 h-3 rounded-full bg-red-600 animate-pulse" />
-                <h4 className="text-xs font-bold text-red-900 uppercase tracking-wider">
-                  Active Emergency Alert ({activeIncident?.id || 'INC-ACTIVE'})
-                </h4>
-              </div>
-              <span className="px-2 py-0.5 bg-red-600 text-white rounded text-[10px] font-extrabold uppercase">
-                {sosStatus}
-              </span>
-            </div>
-
-            <div className="grid grid-cols-2 gap-2 text-xs bg-white p-3 rounded-xl border border-red-100">
-              <div>
-                <span className="text-[10px] text-slate-500 block">Dispatched Unit</span>
-                <span className="font-bold text-slate-900">Ambulance Unit 1 (EMS)</span>
-              </div>
-              <div>
-                <span className="text-[10px] text-slate-500 block">Nearest Health Station</span>
-                <span className="font-bold text-red-600 truncate block">
-                  {nearestFacility?.name || 'FUHSI Health Centre'}
+        {activeSOS && (() => {
+          const statusInfo = getDispatchStatusInfo(sosStatus);
+          return (
+            <div className="bg-red-50 border-2 border-red-300 rounded-2xl p-4 shadow-md space-y-3 animate-fadeIn">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <span className={`w-3 h-3 rounded-full ${statusInfo.pulse ? 'bg-red-600 animate-ping' : 'bg-emerald-600'}`} />
+                  <h4 className="text-xs font-extrabold text-red-900 uppercase tracking-wider">
+                    {statusInfo.title}
+                  </h4>
+                </div>
+                <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase ${statusInfo.badgeColor}`}>
+                  {sosStatus.replace(/_/g, ' ')}
                 </span>
               </div>
-            </div>
 
-            <div className="flex items-center justify-between pt-1">
-              <span className="text-[11px] text-slate-600 font-medium">
-                📲 {emergencyContactsCount > 0 ? `${emergencyContactsCount} Emergency contacts alerted` : 'Campus dispatch team notified'}
-              </span>
-              <button
-                onClick={() => setActiveSOS(false)}
-                className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold rounded-lg transition-colors"
-              >
-                Resolve Case
-              </button>
+              <div className="p-3 bg-white rounded-xl border border-red-100 space-y-2">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <span className="text-[10px] text-slate-400 font-semibold block uppercase">Current Unit Status</span>
+                    <span className="font-bold text-xs text-slate-900">{statusInfo.unitLabel}</span>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-[10px] text-slate-400 font-semibold block uppercase">Nearest Station</span>
+                    <span className="font-bold text-xs text-red-600 block">
+                      {nearestFacility?.name || 'FUHSI Health Centre'}
+                    </span>
+                  </div>
+                </div>
+                <p className="text-[11px] text-slate-600 bg-slate-50 rounded-lg p-2 border border-slate-100 font-medium">
+                  {statusInfo.unitSub}
+                </p>
+              </div>
+
+              {/* Lifecycle Progress Bar */}
+              <div className="grid grid-cols-4 gap-1.5 pt-1 text-center">
+                {[
+                  { key: 'reported', label: '1. Reported' },
+                  { key: 'triaged', label: '2. Triaged' },
+                  { key: 'dispatched', label: '3. En Route' },
+                  { key: 'at_facility', label: '4. At Clinic' },
+                ].map((step, idx) => {
+                  const stages = ['reported', 'triaged', 'responder_assigned', 'dispatched', 'at_facility', 'resolved'];
+                  const currentIdx = stages.indexOf(sosStatus);
+                  const stepTargetIdx = stages.indexOf(step.key);
+                  const isDone = currentIdx >= stepTargetIdx;
+                  return (
+                    <div key={step.key} className="space-y-1">
+                      <div className={`h-1.5 rounded-full ${isDone ? 'bg-red-600' : 'bg-slate-200'}`} />
+                      <span className={`text-[9px] font-bold block ${isDone ? 'text-red-700' : 'text-slate-400'}`}>
+                        {step.label}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="flex items-center justify-between pt-1 border-t border-red-200/60">
+                <span className="text-[11px] text-slate-600 font-medium">
+                  📲 {emergencyContactsCount > 0 ? `${emergencyContactsCount} emergency contacts notified` : 'Campus dispatch team notified'}
+                </span>
+                <button
+                  onClick={() => setActiveSOS(false)}
+                  className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold rounded-lg transition-colors"
+                >
+                  Close Alert View
+                </button>
+              </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* 4. Quick Access Grid (6 Cards) */}
         <div>

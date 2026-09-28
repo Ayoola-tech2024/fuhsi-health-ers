@@ -16,11 +16,18 @@ import {
   Building,
   Mail,
   Edit2,
-  AlertCircle
+  AlertCircle,
+  Stethoscope,
+  ShieldAlert,
+  CheckCircle2,
+  ArrowRight,
+  Shield
 } from 'lucide-react';
 
 export default function StudentProfilePage() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
+  const isStaff = user?.role === 'clinician' || user?.role === 'responder' || user?.role === 'admin';
+
   const [profile, setProfile] = useState({
     blood_group: '',
     genotype: '',
@@ -44,6 +51,10 @@ export default function StudentProfilePage() {
     let isMounted = true;
     async function loadData() {
       try {
+        if (isStaff) {
+          setLoading(false);
+          return;
+        }
         const [profRes, contactRes] = await Promise.all([
           api.getProfile().catch(() => ({ profile: null })),
           api.getContacts().catch(() => ({ contacts: [] }))
@@ -71,7 +82,7 @@ export default function StudentProfilePage() {
     }
     loadData();
     return () => { isMounted = false; };
-  }, [user]);
+  }, [user, isStaff]);
 
   const handleSaveProfile = async (e) => {
     e.preventDefault();
@@ -120,9 +131,115 @@ export default function StudentProfilePage() {
     }
   };
 
-  const displayUserFullName = user?.full_name || 'FUHSI Student Record';
-  const displayUserSub = user?.matric_number || user?.email || 'Live Database Session';
+  const displayUserFullName = user?.full_name || (isStaff ? 'Campus Health Officer' : 'FUHSI Student Record');
+  const displayUserSub = user?.matric_number || user?.staff_id || user?.email || 'Live Database Session';
 
+  // Staff Account & Credential View (For Doctors & Responders)
+  if (isStaff) {
+    const isDoctor = user?.role === 'clinician';
+    return (
+      <div className="min-h-screen bg-[#F8FAFC] text-slate-900 pb-28">
+        {/* Top Header */}
+        <div className="bg-[#0D2040] text-white pt-6 pb-16 px-4">
+          <div className="max-w-4xl mx-auto flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center text-white">
+                {isDoctor ? <Stethoscope className="w-5 h-5 text-emerald-400" /> : <ShieldAlert className="w-5 h-5 text-blue-400" />}
+              </div>
+              <div>
+                <h1 className="text-lg font-bold text-white">
+                  {isDoctor ? 'Clinical Officer Profile' : 'EMS Responder Profile'}
+                </h1>
+                <p className="text-xs text-slate-300">
+                  {displayUserFullName} • Staff ID: {user?.staff_id || 'DOC-FUHSI-088'}
+                </p>
+              </div>
+            </div>
+            <span className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+              Verified {user?.role?.toUpperCase()}
+            </span>
+          </div>
+        </div>
+
+        <div className="max-w-4xl mx-auto px-4 -mt-8 space-y-6">
+          {/* Main Credentials Card */}
+          <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 space-y-6">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+              <div>
+                <h2 className="text-base font-bold text-slate-900">{user?.full_name}</h2>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Federal University of Health Sciences, Ila-Orangun (FUHSI) Health Services
+                </p>
+              </div>
+              <span className="px-3 py-1 bg-slate-100 text-slate-800 rounded-xl text-xs font-bold font-mono">
+                {user?.role?.toUpperCase()}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/80">
+                <span className="text-[10px] text-slate-400 font-bold uppercase block">Official Staff ID</span>
+                <span className="text-xs font-bold text-slate-900 mt-0.5 block font-mono">
+                  {user?.staff_id || 'DOC-FUHSI-088'}
+                </span>
+              </div>
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/80">
+                <span className="text-[10px] text-slate-400 font-bold uppercase block">Official Email</span>
+                <span className="text-xs font-bold text-slate-900 mt-0.5 block truncate">
+                  {user?.email}
+                </span>
+              </div>
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/80">
+                <span className="text-[10px] text-slate-400 font-bold uppercase block">Duty Phone</span>
+                <span className="text-xs font-bold text-slate-900 mt-0.5 block font-mono">
+                  {user?.phone || '+234 800 384 7437'}
+                </span>
+              </div>
+            </div>
+
+            {/* Quick Navigation to Operational Portal */}
+            <div className="p-4 bg-gradient-to-r from-[#0D2040] to-slate-800 rounded-2xl text-white flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-md">
+              <div>
+                <div className="flex items-center space-x-2">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                  <h3 className="font-bold text-sm">
+                    {isDoctor ? 'Doctor Verification & Triage Portal' : 'EMS Dispatch & Incident Queue'}
+                  </h3>
+                </div>
+                <p className="text-xs text-slate-300 mt-1">
+                  {isDoctor
+                    ? 'Review inbound emergency patient vitals, allergies, and verify clinical health entries.'
+                    : 'Monitor active student SOS emergencies, dispatch ambulances, and update case progress.'}
+                </p>
+              </div>
+              <Link
+                to={isDoctor ? '/clinician' : '/responder'}
+                className="px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold flex items-center justify-center space-x-1.5 transition-colors shrink-0 shadow-lg"
+              >
+                <span>{isDoctor ? 'Open Triage Portal' : 'Open Dispatch Queue'}</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+            </div>
+
+            {/* Security & Access Rights */}
+            <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-2">
+              <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center space-x-1.5">
+                <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                <span>Authorized Emergency Permissions</span>
+              </h4>
+              <ul className="text-xs text-slate-600 space-y-1 pl-5 list-disc">
+                <li>Full access to student emergency blood group, genotype & allergen alerts.</li>
+                <li>Audit-logged clinical entry verification and status updates.</li>
+                <li>Direct liaison with FUHSI Health & Medical Centre on-duty ambulance units.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Student Health Profile View
   return (
     <div className="min-h-screen bg-[#F8FAFC] text-slate-900 pb-28">
       {/* Top Header */}

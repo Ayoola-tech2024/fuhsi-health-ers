@@ -11,6 +11,8 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
+  const [demoLoading, setDemoLoading] = useState(null);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -19,7 +21,7 @@ export default function LoginPage() {
       const user = await login(email, password);
       if (user.role === 'responder') navigate('/responder');
       else if (user.role === 'clinician') navigate('/clinician');
-      else navigate('/profile');
+      else navigate('/');
     } catch (err) {
       setError(err.message || 'Invalid email or password');
     } finally {
@@ -27,11 +29,19 @@ export default function LoginPage() {
     }
   };
 
-  const handleDemoSelect = (role) => {
-    loginAsDemo(role);
-    if (role === 'responder') navigate('/responder');
-    else if (role === 'clinician') navigate('/clinician');
-    else navigate('/');
+  const handleDemoSelect = async (role) => {
+    setDemoLoading(role);
+    setError(null);
+    try {
+      const user = await loginAsDemo(role);
+      if (user?.role === 'responder') navigate('/responder');
+      else if (user?.role === 'clinician') navigate('/clinician');
+      else navigate('/');
+    } catch (err) {
+      setError(err.message || 'Demo login failed. Please try again.');
+    } finally {
+      setDemoLoading(null);
+    }
   };
 
   return (
@@ -66,27 +76,30 @@ export default function LoginPage() {
             <div className="grid grid-cols-3 gap-2">
               <button
                 type="button"
+                disabled={!!demoLoading}
                 onClick={() => handleDemoSelect('student')}
-                className="p-2 bg-white hover:bg-slate-100 text-slate-800 rounded-xl text-[11px] font-bold flex flex-col items-center justify-center transition-colors border border-slate-200"
+                className="p-2 bg-white hover:bg-slate-100 disabled:opacity-60 text-slate-800 rounded-xl text-[11px] font-bold flex flex-col items-center justify-center transition-colors border border-slate-200"
               >
                 <User className="w-4 h-4 text-red-600 mb-1" />
-                <span>Student</span>
+                <span>{demoLoading === 'student' ? 'Signing in...' : 'Student'}</span>
               </button>
               <button
                 type="button"
+                disabled={!!demoLoading}
                 onClick={() => handleDemoSelect('clinician')}
-                className="p-2 bg-white hover:bg-slate-100 text-slate-800 rounded-xl text-[11px] font-bold flex flex-col items-center justify-center transition-colors border border-slate-200"
+                className="p-2 bg-white hover:bg-slate-100 disabled:opacity-60 text-slate-800 rounded-xl text-[11px] font-bold flex flex-col items-center justify-center transition-colors border border-slate-200"
               >
                 <Stethoscope className="w-4 h-4 text-emerald-600 mb-1" />
-                <span>Doctor</span>
+                <span>{demoLoading === 'clinician' ? 'Signing in...' : 'Doctor'}</span>
               </button>
               <button
                 type="button"
+                disabled={!!demoLoading}
                 onClick={() => handleDemoSelect('responder')}
-                className="p-2 bg-white hover:bg-slate-100 text-slate-800 rounded-xl text-[11px] font-bold flex flex-col items-center justify-center transition-colors border border-slate-200"
+                className="p-2 bg-white hover:bg-slate-100 disabled:opacity-60 text-slate-800 rounded-xl text-[11px] font-bold flex flex-col items-center justify-center transition-colors border border-slate-200"
               >
                 <AlertCircle className="w-4 h-4 text-blue-600 mb-1" />
-                <span>EMS</span>
+                <span>{demoLoading === 'responder' ? 'Signing in...' : 'EMS'}</span>
               </button>
             </div>
           </div>
