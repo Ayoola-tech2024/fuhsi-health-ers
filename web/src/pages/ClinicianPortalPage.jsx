@@ -20,7 +20,10 @@ import {
   Asterisk,
   HeartPulse,
   ArrowRight,
-  ShieldAlert
+  ShieldAlert,
+  MapPin,
+  ExternalLink,
+  Navigation
 } from 'lucide-react';
 
 export default function ClinicianPortalPage() {
@@ -245,15 +248,29 @@ export default function ClinicianPortalPage() {
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between pt-1">
-                    <span className="text-[10px] text-slate-500 truncate max-w-[180px]">
-                      📍 {inc.facility_name || 'Near Campus Clinic'}
-                    </span>
+                  <div className="flex items-center justify-between pt-1 border-t border-red-100">
+                    <div className="flex items-center space-x-1.5">
+                      <span className="text-[10px] text-slate-600 truncate max-w-[150px] font-medium">
+                        📍 {inc.facility_name || 'FUHSI Health Centre'}
+                      </span>
+                      {inc.latitude && inc.longitude && (
+                        <a
+                          href={`https://www.google.com/maps?q=${inc.latitude},${inc.longitude}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-[9px] font-bold text-blue-600 hover:underline flex items-center space-x-0.5 bg-white px-1.5 py-0.5 rounded border border-blue-200"
+                          title="View exact student GPS coordinates"
+                        >
+                          <span>Maps ({Number(inc.latitude).toFixed(3)}°)</span>
+                          <ExternalLink className="w-2.5 h-2.5" />
+                        </a>
+                      )}
+                    </div>
                     <button
                       onClick={() => handleSelectInboundPatient(inc)}
-                      className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-bold flex items-center space-x-1 transition-colors shadow-sm"
+                      className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-bold flex items-center space-x-1 transition-colors shadow-sm shrink-0"
                     >
-                      <span>Prepare EHR & Triage</span>
+                      <span>Prepare EHR</span>
                       <ArrowRight className="w-3 h-3" />
                     </button>
                   </div>

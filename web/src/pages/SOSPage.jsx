@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
@@ -21,7 +21,8 @@ import {
   Check,
   Apple,
   Cross,
-  UserPlus
+  UserPlus,
+  ExternalLink
 } from 'lucide-react';
 
 export default function SOSPage() {
@@ -41,6 +42,9 @@ export default function SOSPage() {
   const [arming, setArming] = useState(false);
   const [countdown, setCountdown] = useState(5);
   const [coords, setCoords] = useState({ latitude: 8.0194, longitude: 4.9042 });
+  const [gpsState, setGpsState] = useState('detecting'); // 'acquired' | 'detecting' | 'campus_fallback' | 'denied'
+  const [gpsAccuracy, setGpsAccuracy] = useState(null);
+  const coordsRef = useRef(coords);
 
   // Interactive Modals
   const [showAmbulanceModal, setShowAmbulanceModal] = useState(false);
@@ -62,6 +66,36 @@ export default function SOSPage() {
   const [showNotificationsModal, setShowNotificationsModal] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [notificationsLoading, setNotificationsLoading] = useState(false);
+
+  // High-accuracy GPS position acquirer
+  const acquireGpsPosition = (callback) => {
+    if (!navigator.geolocation) {
+      setGpsState('campus_fallback');
+      if (typeof callback === 'function') callback(coordsRef.current);
+      return;
+    }
+    setGpsState('detecting');
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const fresh = { latitude: pos.coords.latitude, longitude: pos.coords.longitude };
+        coordsRef.current = fresh;
+        setCoords(fresh);
+        setGpsAccuracy(Math.round(pos.coords.accuracy));
+        setGpsState('acquired');
+        if (typeof callback === 'function') callback(fresh);
+      },
+      (err) => {
+        console.warn('Geolocation notice:', err.message);
+        if (err.code === 1) {
+          setGpsState('denied');
+        } else {
+          setGpsState('campus_fallback');
+        }
+        if (typeof callback === 'function') callback(coordsRef.current);
+      },
+      { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
+    );
+  };
 
   // Fetch Live Data from Backend on Load
   useEffect(() => {
@@ -93,21 +127,35 @@ export default function SOSPage() {
     }
 
     fetchLiveDbData();
-
-    // Acquire GPS
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          if (isMounted) {
-            setCoords({ latitude: pos.coords.latitude, longitude: pos.coords.longitude });
-          }
-        },
-        () => console.log('Using default FUHSI campus coordinates')
-      );
-    }
+    acquireGpsPosition();
 
     return () => { isMounted = false; };
   }, [isAuthenticated, user]);
+
+  // Continuous live GPS tracking stream during active emergency
+  useEffect(() => {
+    let watchId;
+    if (activeSOS && activeIncident?.id && navigator.geolocation) {
+      watchId = navigator.geolocation.watchPosition(
+        (pos) => {
+          const fresh = { latitude: pos.coords.latitude, longitude: pos.coords.longitude };
+          coordsRef.current = fresh;
+          setCoords(fresh);
+          setGpsAccuracy(Math.round(pos.coords.accuracy));
+          setGpsState('acquired');
+          // Stream real-time coordinates to backend location audit trail
+          api.updateIncidentLocation(activeIncident.id, fresh).catch(() => {});
+        },
+        (err) => console.warn('GPS stream notice:', err.message),
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 3000 }
+      );
+    }
+    return () => {
+      if (watchId !== undefined && navigator.geolocation) {
+        navigator.geolocation.clearWatch(watchId);
+      }
+    };
+  }, [activeSOS, activeIncident]);
 
   function formatArrayField(val, fallback = 'None') {
     if (!val) return fallback;
@@ -140,6 +188,7 @@ export default function SOSPage() {
   }, [arming, countdown]);
 
   const handleStartSOS = () => {
+    acquireGpsPosition();
     setCountdown(5);
     setArming(true);
   };
@@ -247,29 +296,35 @@ export default function SOSPage() {
     setActiveSOS(true);
     setSosStatus('reported');
 
-    try {
-      const res = await api.triggerSOS({
-        latitude: coords.latitude,
-        longitude: coords.longitude,
-        description: `Emergency alert triggered by ${displayName}. Immediate response requested.`,
-      });
-      if (res && res.incident) {
-        setActiveIncident(res.incident);
-        setNearestFacility(res.nearestFacility);
-        setSosStatus(res.incident.status || 'reported');
+    // Ensure freshest high-accuracy GPS coordinates are captured
+    acquireGpsPosition(async (freshCoords) => {
+      const activeCoords = freshCoords || coordsRef.current || coords;
+      try {
+        const res = await api.triggerSOS({
+          latitude: activeCoords.latitude,
+          longitude: activeCoords.longitude,
+          description: `Emergency alert triggered by ${displayName}. Immediate response requested.`,
+        });
+        if (res && res.incident) {
+          setActiveIncident(res.incident);
+          setNearestFacility(res.nearestFacility);
+          setSosStatus(res.incident.status || 'reported');
+        }
+      } catch (e) {
+        console.warn('Using local incident handler for resilience:', e);
+        setActiveIncident({
+          id: `INC-FUHSI-${Math.floor(100 + Math.random() * 900)}`,
+          status: 'reported',
+          latitude: activeCoords.latitude,
+          longitude: activeCoords.longitude,
+        });
+        setNearestFacility({
+          name: 'FUHSI Health & Medical Centre',
+          distanceKm: 0.4,
+          phone: '+234 800 384 7437',
+        });
       }
-    } catch (e) {
-      console.warn('Using local incident handler for resilience:', e);
-      setActiveIncident({
-        id: `INC-FUHSI-${Math.floor(100 + Math.random() * 900)}`,
-        status: 'reported',
-      });
-      setNearestFacility({
-        name: 'FUHSI Health & Medical Centre',
-        distanceKm: 0.4,
-        phone: '+234 800 384 7437',
-      });
-    }
+    });
   };
 
   const handleBookDoctor = async (e) => {
@@ -412,9 +467,37 @@ export default function SOSPage() {
               <p className="text-[11px] text-slate-500 font-medium truncate max-w-[190px]">
                 {displayRole}
               </p>
+              {/* Dynamic GPS Status Pill */}
               <div className="flex items-center space-x-1.5 mt-0.5">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                <span className="text-[10px] font-semibold text-emerald-600">Live GPS Active</span>
+                {gpsState === 'acquired' && (
+                  <>
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                    <span className="text-[10px] font-semibold text-emerald-700" title={`Accuracy: ±${gpsAccuracy || 10}m`}>
+                      Live GPS: {coords.latitude.toFixed(4)}°, {coords.longitude.toFixed(4)}° {gpsAccuracy ? `(±${gpsAccuracy}m)` : ''}
+                    </span>
+                  </>
+                )}
+                {gpsState === 'detecting' && (
+                  <>
+                    <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping" />
+                    <span className="text-[10px] font-semibold text-amber-700">Acquiring Live GPS...</span>
+                  </>
+                )}
+                {gpsState === 'campus_fallback' && (
+                  <>
+                    <span className="w-2 h-2 rounded-full bg-blue-500" />
+                    <span className="text-[10px] font-semibold text-blue-700">Campus GPS ({coords.latitude.toFixed(4)}°, {coords.longitude.toFixed(4)}°)</span>
+                  </>
+                )}
+                {gpsState === 'denied' && (
+                  <button 
+                    onClick={() => acquireGpsPosition()}
+                    className="flex items-center space-x-1 text-[10px] font-bold text-red-600 hover:underline"
+                  >
+                    <span className="w-2 h-2 rounded-full bg-red-500" />
+                    <span>GPS Permission Blocked (Tap to retry)</span>
+                  </button>
+                )}
               </div>
             </div>
           </div>
@@ -477,11 +560,11 @@ export default function SOSPage() {
               </p>
 
               <div className="mt-2.5 inline-flex items-center space-x-1.5 px-2.5 py-1 bg-black/25 rounded-full text-[9px] font-semibold text-white">
-                <span>📍 Live location</span>
+                <span>📍 Live GPS Location</span>
                 <span>•</span>
-                <span>Medical profile</span>
+                <span>Medical Profile</span>
                 <span>•</span>
-                <span>Ambulance dispatch</span>
+                <span>Ambulance Dispatch</span>
               </div>
             </div>
 
@@ -528,6 +611,25 @@ export default function SOSPage() {
                 <p className="text-[11px] text-slate-600 bg-slate-50 rounded-lg p-2 border border-slate-100 font-medium">
                   {statusInfo.unitSub}
                 </p>
+
+                {/* Live GPS Coordinates Pill & Maps Link */}
+                <div className="flex items-center justify-between text-[11px] bg-red-50/70 rounded-lg p-2 border border-red-100 mt-2">
+                  <div className="flex items-center space-x-1.5 text-slate-800">
+                    <MapPin className="w-3.5 h-3.5 text-red-600 shrink-0" />
+                    <span className="font-bold font-mono text-[10px]">
+                      GPS: {coords.latitude.toFixed(5)}° N, {coords.longitude.toFixed(5)}° E
+                    </span>
+                  </div>
+                  <a
+                    href={`https://www.google.com/maps?q=${coords.latitude},${coords.longitude}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-[10px] font-bold text-blue-600 hover:underline flex items-center space-x-1 bg-white px-2 py-1 rounded border border-blue-200"
+                  >
+                    <span>View in Maps</span>
+                    <ExternalLink className="w-3 h-3" />
+                  </a>
+                </div>
               </div>
 
               {/* Lifecycle Progress Bar */}

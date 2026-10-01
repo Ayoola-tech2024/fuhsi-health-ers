@@ -262,20 +262,25 @@ export default function ResponderDashboardPage() {
                     </div>
                   </div>
 
-                  {/* Facility Routing */}
+                  {/* Facility Routing & Live Turn-by-Turn Navigation */}
                   <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-100 space-y-2 text-xs">
-                    <span className="text-[10px] font-semibold text-slate-500 uppercase block">Matched Medical Facility</span>
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-semibold text-slate-500 uppercase block">Matched Medical Facility</span>
+                      <span className="text-[10px] font-mono text-slate-500">
+                        {selectedIncident.latitude ? `${Number(selectedIncident.latitude).toFixed(4)}°, ${Number(selectedIncident.longitude).toFixed(4)}°` : ''}
+                      </span>
+                    </div>
                     <div className="font-bold text-slate-900">{selectedIncident.facility_name || 'FUHSI Health & Medical Centre'}</div>
                     {selectedIncident.latitude && selectedIncident.longitude && (
                       <a
-                        href={`https://www.google.com/maps?q=${selectedIncident.latitude},${selectedIncident.longitude}`}
+                        href={`https://www.google.com/maps/dir/?api=1&destination=${selectedIncident.latitude},${selectedIncident.longitude}`}
                         target="_blank"
                         rel="noreferrer"
-                        className="w-full py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-lg text-xs font-bold flex items-center justify-center space-x-1.5 transition-colors mt-2"
+                        className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold flex items-center justify-center space-x-1.5 transition-colors mt-2 shadow-sm"
                       >
                         <Navigation className="w-3.5 h-3.5" />
-                        <span>Open Live Student GPS in Maps</span>
-                        <ExternalLink className="w-3 h-3" />
+                        <span>Navigate to Student (Google Maps)</span>
+                        <ExternalLink className="w-3 h-3 text-blue-200" />
                       </a>
                     )}
                   </div>
