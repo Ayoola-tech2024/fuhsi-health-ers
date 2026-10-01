@@ -7,9 +7,32 @@ import {
   Minimize2, 
   Compass, 
   ExternalLink, 
-  Building2,
-  AlertCircle
+  Layers
 } from 'lucide-react';
+
+const TILE_PRESETS = {
+  humanitarian: {
+    name: 'Emergency (HOT)',
+    url: 'https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png',
+    attribution: '&copy; OpenStreetMap contributors, Tiles style by HOT',
+    maxZoom: 19,
+    subdomains: 'abc',
+  },
+  standard: {
+    name: 'Standard OSM',
+    url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+    attribution: '&copy; OpenStreetMap contributors',
+    maxZoom: 19,
+    subdomains: 'abc',
+  },
+  esriStreet: {
+    name: 'ESRI Street',
+    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',
+    attribution: '&copy; Esri & OpenStreetMap',
+    maxZoom: 18,
+    subdomains: '',
+  }
+};
 
 export default function EmergencyMap({
   studentCoords,
@@ -24,12 +47,14 @@ export default function EmergencyMap({
 }) {
   const mapContainerRef = useRef(null);
   const mapInstanceRef = useRef(null);
+  const tileLayerRef = useRef(null);
   const markersGroupRef = useRef(null);
   const routeLineRef = useRef(null);
   const [isExpanded, setIsExpanded] = useState(false);
   const [distanceKm, setDistanceKm] = useState(null);
+  const [currentStyle, setCurrentStyle] = useState('humanitarian');
 
-  // Safe fallback to FUHSI campus
+  // Safe fallback to FUHSI campus coordinates
   const sLat = Number(studentCoords?.latitude) || 8.0194;
   const sLng = Number(studentCoords?.longitude) || 4.9042;
   const fLat = Number(facilityCoords?.latitude) || 8.0210;
@@ -49,6 +74,25 @@ export default function EmergencyMap({
     setDistanceKm(d < 1 ? `${Math.round(d * 1000)}m` : `${d.toFixed(2)}km`);
   }, [sLat, sLng, fLat, fLng]);
 
+  // Handle Layer switching
+  const switchMapStyle = () => {
+    const styles = ['humanitarian', 'standard', 'esriStreet'];
+    const nextIdx = (styles.indexOf(currentStyle) + 1) % styles.length;
+    const nextStyle = styles[nextIdx];
+    setCurrentStyle(nextStyle);
+
+    if (mapInstanceRef.current && tileLayerRef.current) {
+      mapInstanceRef.current.removeLayer(tileLayerRef.current);
+      const preset = TILE_PRESETS[nextStyle];
+      const newLayer = L.tileLayer(preset.url, {
+        maxZoom: preset.maxZoom,
+        subdomains: preset.subdomains || 'abc',
+        attribution: preset.attribution,
+      }).addTo(mapInstanceRef.current);
+      tileLayerRef.current = newLayer;
+    }
+  };
+
   useEffect(() => {
     if (!mapContainerRef.current) return;
 
@@ -61,15 +105,17 @@ export default function EmergencyMap({
         attributionControl: false,
       });
 
-      // Sleek Minimalist CartoDB Positron tiles (ultra-crisp, light, clean)
-      L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-        maxZoom: 19,
-        subdomains: 'abcd',
+      // 100% Free Open-Source Tiles (Humanitarian OpenStreetMap / Zero API Key / Forever Free)
+      const preset = TILE_PRESETS[currentStyle];
+      const tiles = L.tileLayer(preset.url, {
+        maxZoom: preset.maxZoom,
+        subdomains: preset.subdomains || 'abc',
       }).addTo(map);
+      tileLayerRef.current = tiles;
 
-      // Attribution
+      // Clean Attribution
       L.control.attribution({ position: 'bottomright', prefix: false })
-        .addAttribution('© OpenStreetMap, © CARTO')
+        .addAttribution('© OpenStreetMap & HOT contributors')
         .addTo(map);
 
       // Add zoom control in top right
@@ -164,7 +210,7 @@ export default function EmergencyMap({
   return (
     <div className={`relative overflow-hidden rounded-2xl border border-slate-200/90 shadow-sm bg-slate-100 ${className} ${isExpanded ? 'fixed inset-4 z-50 rounded-3xl shadow-2xl flex flex-col h-[calc(100vh-2rem)]' : ''}`}>
       {/* Top Overlay Badge Bar */}
-      <div className="absolute top-3 left-3 right-12 z-[400] flex items-center justify-between pointer-events-none">
+      <div className="absolute top-3 left-3 right-14 z-[400] flex items-center justify-between pointer-events-none">
         <div className="bg-white/95 backdrop-blur-md px-3 py-1.5 rounded-xl border border-slate-200/80 shadow-md flex items-center space-x-2 pointer-events-auto">
           <span className="w-2 h-2 rounded-full bg-red-600 animate-ping shrink-0" />
           <div className="text-[10px] font-bold text-slate-800 flex items-center space-x-1">
@@ -178,7 +224,7 @@ export default function EmergencyMap({
         </div>
       </div>
 
-      {/* Map Action Controls (Bottom / Top Overlay) */}
+      {/* Map Action Controls */}
       <div className="absolute top-3 right-3 z-[400] flex flex-col space-y-1.5">
         <button
           type="button"
@@ -195,6 +241,14 @@ export default function EmergencyMap({
           title="Recenter Map"
         >
           <Compass className="w-4 h-4 text-blue-600" />
+        </button>
+        <button
+          type="button"
+          onClick={switchMapStyle}
+          className="w-8 h-8 rounded-xl bg-white/95 backdrop-blur-md hover:bg-white text-slate-700 flex items-center justify-center shadow-md border border-slate-200 transition-transform active:scale-95 text-[10px]"
+          title={`Switch Style (Current: ${TILE_PRESETS[currentStyle].name})`}
+        >
+          <Layers className="w-4 h-4 text-emerald-600" />
         </button>
       </div>
 
