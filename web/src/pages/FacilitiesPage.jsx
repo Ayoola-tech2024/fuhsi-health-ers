@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import { Building2, Phone, MapPin, Clock, Navigation, Loader2 } from 'lucide-react';
+import EmergencyMap from '../components/EmergencyMap';
 
 export default function FacilitiesPage() {
   const [facilities, setFacilities] = useState([]);
@@ -24,6 +25,8 @@ export default function FacilitiesPage() {
     return () => { isMounted = false; };
   }, []);
 
+  const firstFac = facilities[0] || { latitude: 8.0210, longitude: 4.9055, name: 'FUHSI Health & Medical Centre' };
+
   return (
     <div className="min-h-screen bg-[#F8FAFC] text-slate-900 pb-28">
       {/* Header */}
@@ -36,7 +39,31 @@ export default function FacilitiesPage() {
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto px-4 -mt-8">
+      <div className="max-w-4xl mx-auto px-4 -mt-8 space-y-6">
+        {/* Interactive Campus Map Banner */}
+        {!loading && facilities.length > 0 && (
+          <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-200">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center space-x-2">
+                <MapPin className="w-4 h-4 text-emerald-600" />
+                <h2 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+                  Interactive Campus Clinics Map
+                </h2>
+              </div>
+              <span className="text-[10px] text-slate-500 font-medium">
+                {facilities.length} Stations Active
+              </span>
+            </div>
+            <EmergencyMap
+              studentCoords={{ latitude: 8.0194, longitude: 4.9042 }}
+              facilityCoords={{ latitude: firstFac.latitude || 8.0210, longitude: firstFac.longitude || 4.9055 }}
+              facilityName={firstFac.name}
+              studentName="FUHSI Campus Gateway"
+              height="240px"
+            />
+          </div>
+        )}
+
         {loading ? (
           <div className="bg-white rounded-2xl p-12 border border-slate-200 text-center flex flex-col items-center justify-center">
             <Loader2 className="w-8 h-8 text-blue-600 animate-spin mb-2" />

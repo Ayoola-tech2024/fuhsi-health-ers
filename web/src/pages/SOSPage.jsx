@@ -24,6 +24,7 @@ import {
   UserPlus,
   ExternalLink
 } from 'lucide-react';
+import EmergencyMap from '../components/EmergencyMap';
 
 export default function SOSPage() {
   const { user, isAuthenticated } = useAuth();
@@ -612,24 +613,16 @@ export default function SOSPage() {
                   {statusInfo.unitSub}
                 </p>
 
-                {/* Live GPS Coordinates Pill & Maps Link */}
-                <div className="flex items-center justify-between text-[11px] bg-red-50/70 rounded-lg p-2 border border-red-100 mt-2">
-                  <div className="flex items-center space-x-1.5 text-slate-800">
-                    <MapPin className="w-3.5 h-3.5 text-red-600 shrink-0" />
-                    <span className="font-bold font-mono text-[10px]">
-                      GPS: {coords.latitude.toFixed(5)}° N, {coords.longitude.toFixed(5)}° E
-                    </span>
-                  </div>
-                  <a
-                    href={`https://www.google.com/maps?q=${coords.latitude},${coords.longitude}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-[10px] font-bold text-blue-600 hover:underline flex items-center space-x-1 bg-white px-2 py-1 rounded border border-blue-200"
-                  >
-                    <span>View in Maps</span>
-                    <ExternalLink className="w-3 h-3" />
-                  </a>
-                </div>
+                {/* Embedded Live Interactive Emergency & Campus Routing Map */}
+                <EmergencyMap
+                  studentCoords={coords}
+                  facilityCoords={nearestFacility || { latitude: 8.0210, longitude: 4.9055, name: 'FUHSI Health & Medical Centre' }}
+                  status={sosStatus}
+                  facilityName={nearestFacility?.name || 'FUHSI Health Centre'}
+                  studentName={displayName}
+                  height="210px"
+                  className="mt-2"
+                />
               </div>
 
               {/* Lifecycle Progress Bar */}
