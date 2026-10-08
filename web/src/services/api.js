@@ -70,6 +70,7 @@ export const api = {
 
   // Trusted Friends / Buddies (Proxy SOS)
   getBuddies: () => request('/buddies'),
+  lookupBuddy: (query) => request(`/buddies/lookup?query=${encodeURIComponent(query)}`),
   createBuddy: (payload) => request('/buddies', { method: 'POST', body: JSON.stringify(payload) }),
   deleteBuddy: (id) => request(`/buddies/${id}`, { method: 'DELETE' }),
 

@@ -22,6 +22,7 @@ async function autoBootDb() {
       CREATE TABLE IF NOT EXISTS trusted_buddies (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         student_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        buddy_user_id UUID REFERENCES users(id) ON DELETE CASCADE,
         name TEXT NOT NULL,
         phone TEXT NOT NULL,
         matric_number TEXT,
@@ -30,6 +31,7 @@ async function autoBootDb() {
         notes TEXT,
         created_at TIMESTAMPTZ NOT NULL DEFAULT now()
       );
+      ALTER TABLE trusted_buddies ADD COLUMN IF NOT EXISTS buddy_user_id UUID REFERENCES users(id) ON DELETE CASCADE;
       ALTER TABLE incidents ADD COLUMN IF NOT EXISTS is_proxy_sos BOOLEAN NOT NULL DEFAULT FALSE;
       ALTER TABLE incidents ADD COLUMN IF NOT EXISTS patient_name TEXT;
       ALTER TABLE incidents ADD COLUMN IF NOT EXISTS patient_matric_number TEXT;

@@ -359,16 +359,14 @@ export default function SOSPage() {
                     onClick={() => setSelectedBuddyId(b.id)}
                     className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 ${
                       isSelected
-                        ? 'bg-purple-100 text-purple-900 border border-purple-400 ring-2 ring-purple-400/20'
+                        ? 'bg-purple-100 text-purple-900 border border-purple-400 ring-2 ring-purple-400/20 shadow-sm'
                         : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200'
                     }`}
                   >
                     <span>👤 {b.name.split(' ')[0]}</span>
-                    {b.blood_group && (
-                      <span className="px-1 bg-purple-200 text-purple-900 rounded text-[9px] font-mono font-extrabold">
-                        {b.blood_group}
-                      </span>
-                    )}
+                    <span className="px-1.5 py-0.5 bg-purple-200/80 text-purple-900 rounded text-[9px] font-mono font-bold">
+                      {b.matric_number ? b.matric_number.split('/').pop() : 'Linked'}
+                    </span>
                   </button>
                 );
               })}
