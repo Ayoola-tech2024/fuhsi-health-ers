@@ -38,6 +38,15 @@ if (process.env.DATABASE_URL) {
     implementation: () => require('crypto').randomUUID(),
   });
 
+  db.public.registerFunction({
+    name: 'array_to_string',
+    implementation: (arr, delimiter) => {
+      if (!arr) return null;
+      if (Array.isArray(arr)) return arr.join(delimiter || ',');
+      return String(arr);
+    },
+  });
+
   // Pre-register enum types before tables
   db.public.none(`
     CREATE TYPE user_role AS ENUM ('student', 'clinician', 'responder', 'admin');

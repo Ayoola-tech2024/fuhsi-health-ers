@@ -8,7 +8,8 @@ async function listForStudent(studentId) {
             COALESCE(u.phone, tb.phone) AS phone,
             COALESCE(u.matric_number, tb.matric_number) AS matric_number,
             COALESCE(sp.blood_group, tb.blood_group) AS blood_group,
-            COALESCE(array_to_string(sp.allergies, ', '), tb.allergies) AS allergies,
+            sp.allergies AS profile_allergies,
+            tb.allergies AS custom_allergies,
             sp.genotype,
             sp.department,
             tb.notes,
@@ -21,7 +22,27 @@ async function listForStudent(studentId) {
      ORDER BY tb.created_at ASC`,
     [studentId]
   );
-  return rows;
+  return rows.map((r) => {
+    const rawAllergies = r.profile_allergies || r.custom_allergies;
+    const allergiesStr = Array.isArray(rawAllergies) ? rawAllergies.join(', ') : (rawAllergies || null);
+    return {
+      id: r.id,
+      student_id: r.student_id,
+      buddy_user_id: r.buddy_user_id,
+      status: r.status,
+      requested_by: r.requested_by,
+      name: r.name,
+      phone: r.phone,
+      matric_number: r.matric_number,
+      blood_group: r.blood_group,
+      allergies: allergiesStr,
+      genotype: r.genotype,
+      department: r.department,
+      notes: r.notes,
+      created_at: r.created_at,
+      is_account_linked: r.is_account_linked,
+    };
+  });
 }
 
 async function listIncomingRequests(studentId) {
