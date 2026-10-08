@@ -13,11 +13,8 @@ import {
   PhoneCall, 
   Activity, 
   Filter, 
-  Check, 
-  Navigation,
   RefreshCw,
-  Loader2,
-  ShieldAlert
+  Loader2
 } from 'lucide-react';
 import EmergencyMap from '../components/EmergencyMap';
 

@@ -21,8 +21,7 @@ import {
   Check,
   Apple,
   Cross,
-  UserPlus,
-  ExternalLink
+  UserPlus
 } from 'lucide-react';
 import EmergencyMap from '../components/EmergencyMap';
 import BuddyManagerModal from '../components/BuddyManagerModal';
@@ -36,7 +35,6 @@ export default function SOSPage() {
   const [contacts, setContacts] = useState([]);
   const [facilities, setFacilities] = useState([]);
   const [buddies, setBuddies] = useState([]);
-  const [loadingData, setLoadingData] = useState(true);
 
   // Buddy SOS / Proxy SOS State
   const [sosTarget, setSosTarget] = useState('self'); // 'self' | 'buddy'
@@ -138,8 +136,6 @@ export default function SOSPage() {
         }
       } catch (err) {
         console.warn('Live data fetch notice:', err.message);
-      } finally {
-        if (isMounted) setLoadingData(false);
       }
     }
 
@@ -230,7 +226,7 @@ export default function SOSPage() {
             setActiveSOS(false);
           }
         }
-      } catch (e) {
+      } catch {
         // ignore background poll errors
       }
     };
@@ -819,7 +815,7 @@ export default function SOSPage() {
                   { key: 'triaged', label: '2. Triaged' },
                   { key: 'dispatched', label: '3. En Route' },
                   { key: 'at_facility', label: '4. At Clinic' },
-                ].map((step, idx) => {
+                ].map((step) => {
                   const stages = ['reported', 'triaged', 'responder_assigned', 'dispatched', 'at_facility', 'resolved'];
                   const currentIdx = stages.indexOf(sosStatus);
                   const stepTargetIdx = stages.indexOf(step.key);
