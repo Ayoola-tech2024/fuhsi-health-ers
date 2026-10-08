@@ -161,7 +161,7 @@ async function createBuddyRequest({ studentId, buddyUserId, notes }) {
 
 async function respondToRequest({ requestId, studentId, action }) {
   const reqRes = await pool.query(
-    `SELECT tb.*, u.full_name AS requester_name, u.id AS requester_id
+    `SELECT tb.*, u.full_name AS requester_name, u.id AS requester_id, u.phone AS requester_phone, u.matric_number AS requester_matric
      FROM trusted_buddies tb
      JOIN users u ON u.id = tb.student_id
      WHERE tb.id = $1 AND tb.buddy_user_id = $2 AND tb.status = 'pending'`,
@@ -186,11 +186,44 @@ async function respondToRequest({ requestId, studentId, action }) {
       [requestId]
     );
 
+    // Create reciprocal accepted link so BOTH friends have each other linked
+    const reverseCheck = await pool.query(
+      `SELECT id FROM trusted_buddies WHERE student_id = $1 AND buddy_user_id = $2`,
+      [studentId, request.student_id]
+    );
+    if (reverseCheck.rows.length === 0) {
+      // Get requester's clinical profile
+      const reqProfRes = await pool.query(
+        `SELECT sp.blood_group, sp.allergies, sp.genotype, sp.department
+         FROM student_profiles sp WHERE sp.student_id = $1`,
+        [request.student_id]
+      );
+      const rp = reqProfRes.rows[0] || {};
+      const rawAllergies = rp.allergies;
+      const allergiesStr = Array.isArray(rawAllergies) ? rawAllergies.join(', ') : rawAllergies;
+
+      await pool.query(
+        `INSERT INTO trusted_buddies (student_id, buddy_user_id, name, phone, matric_number, blood_group, allergies, notes, status, requested_by)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'accepted', $9)`,
+        [
+          studentId,
+          request.student_id,
+          request.requester_name,
+          request.requester_phone || 'N/A',
+          request.requester_matric,
+          rp.blood_group || null,
+          allergiesStr || null,
+          'Mutual Emergency Link',
+          request.requested_by
+        ]
+      );
+    }
+
     // Notify requester
     await notificationModel.queue({
       userId: request.requester_id,
       channel: 'push',
-      message: `✅ Emergency Buddy Approved: ${approverName} accepted your buddy request! You can now trigger emergency SOS for each other.`
+      message: `✅ Emergency Buddy Approved: ${approverName} accepted your buddy request! You can now protect each other in emergencies.`
     }).catch(() => {});
 
     return { status: 'accepted', buddy: rows[0] };
@@ -213,11 +246,25 @@ async function respondToRequest({ requestId, studentId, action }) {
 }
 
 async function deleteForStudent(id, studentId) {
-  const { rows } = await pool.query(
-    `DELETE FROM trusted_buddies WHERE id = $1 AND (student_id = $2 OR buddy_user_id = $2) RETURNING *`,
+  const rowRes = await pool.query(
+    `SELECT * FROM trusted_buddies WHERE id = $1 AND (student_id = $2 OR buddy_user_id = $2)`,
     [id, studentId]
   );
-  return rows[0] || null;
+  if (rowRes.rows.length === 0) return null;
+  const target = rowRes.rows[0];
+
+  if (target.buddy_user_id) {
+    await pool.query(
+      `DELETE FROM trusted_buddies 
+       WHERE (student_id = $1 AND buddy_user_id = $2)
+          OR (student_id = $2 AND buddy_user_id = $1)
+          OR id = $3`,
+      [target.student_id, target.buddy_user_id, id]
+    );
+  } else {
+    await pool.query(`DELETE FROM trusted_buddies WHERE id = $1`, [id]);
+  }
+  return target;
 }
 
 module.exports = {

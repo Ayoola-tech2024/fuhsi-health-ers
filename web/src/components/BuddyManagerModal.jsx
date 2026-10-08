@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 import { api } from '../services/api';
 
-export default function BuddyManagerModal({ isOpen, onClose, buddies = [], onBuddyUpdated }) {
+export default function BuddyManagerModal({ isOpen, onClose, buddies = [], onBuddyUpdated, onBuddiesChanged }) {
   const [adding, setAdding] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searching, setSearching] = useState(false);
@@ -32,30 +32,48 @@ export default function BuddyManagerModal({ isOpen, onClose, buddies = [], onBud
   const [error, setError] = useState(null);
   const [successMsg, setSuccessMsg] = useState(null);
 
+  // Local buddies state for instant UI responsiveness
+  const [buddiesList, setBuddiesList] = useState(buddies);
+
+  // Sync when prop changes
+  useEffect(() => {
+    if (buddies && Array.isArray(buddies)) {
+      setBuddiesList(buddies);
+    }
+  }, [buddies]);
+
   // Incoming Requests State
   const [incomingRequests, setIncomingRequests] = useState([]);
   const [incomingLoading, setIncomingLoading] = useState(false);
 
-  // Fetch incoming buddy requests
-  const fetchIncoming = useCallback(async () => {
+  // Fetch full live buddy data
+  const refreshAll = useCallback(async () => {
     try {
       setIncomingLoading(true);
-      const res = await api.getIncomingBuddies().catch(() => null);
-      if (res && res.incoming) {
-        setIncomingRequests(res.incoming);
+      const [budRes, incRes] = await Promise.all([
+        api.getBuddies().catch(() => ({ buddies: [] })),
+        api.getIncomingBuddies().catch(() => ({ incoming: [] }))
+      ]);
+      if (budRes && Array.isArray(budRes.buddies)) {
+        setBuddiesList(budRes.buddies);
       }
+      if (incRes && Array.isArray(incRes.incoming)) {
+        setIncomingRequests(incRes.incoming);
+      }
+      if (typeof onBuddyUpdated === 'function') onBuddyUpdated();
+      if (typeof onBuddiesChanged === 'function') onBuddiesChanged();
     } catch {
       // ignore
     } finally {
       setIncomingLoading(false);
     }
-  }, []);
+  }, [onBuddyUpdated, onBuddiesChanged]);
 
   useEffect(() => {
     if (isOpen) {
-      fetchIncoming();
+      refreshAll();
     }
-  }, [isOpen, fetchIncoming]);
+  }, [isOpen, refreshAll]);
 
   if (!isOpen) return null;
 
@@ -89,7 +107,7 @@ export default function BuddyManagerModal({ isOpen, onClose, buddies = [], onBud
   // 2. Send authorization request to link verified account
   const handleSendBuddyRequest = async () => {
     if (!verifiedUser) return;
-    if (buddies.length >= 3) {
+    if (buddiesList.length >= 3) {
       setError('You can link a maximum of 3 trusted friends.');
       return;
     }
@@ -111,7 +129,7 @@ export default function BuddyManagerModal({ isOpen, onClose, buddies = [], onBud
       setNotes('');
       setAdding(false);
 
-      if (onBuddyUpdated) onBuddyUpdated();
+      await refreshAll();
     } catch (err) {
       setError(err.message || 'Failed to send buddy request.');
     } finally {
@@ -130,8 +148,7 @@ export default function BuddyManagerModal({ isOpen, onClose, buddies = [], onBud
           ? 'You have approved the buddy request! You can now protect each other in emergencies.'
           : 'Buddy request declined.'
       );
-      fetchIncoming();
-      if (onBuddyUpdated) onBuddyUpdated();
+      await refreshAll();
     } catch (err) {
       setError(err.message || 'Failed to process response.');
     } finally {
@@ -145,7 +162,7 @@ export default function BuddyManagerModal({ isOpen, onClose, buddies = [], onBud
       setDeletingId(id);
       setError(null);
       await api.deleteBuddy(id);
-      if (onBuddyUpdated) onBuddyUpdated();
+      await refreshAll();
     } catch (err) {
       setError(err.message || 'Failed to unlink friend.');
     } finally {
@@ -277,9 +294,9 @@ export default function BuddyManagerModal({ isOpen, onClose, buddies = [], onBud
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold text-slate-900 uppercase tracking-wider">
-                My Emergency Buddies ({buddies.length}/3)
+                My Emergency Buddies ({buddiesList.length}/3)
               </span>
-              {!adding && buddies.length < 3 && (
+              {!adding && buddiesList.length < 3 && (
                 <button
                   type="button"
                   onClick={() => {
@@ -296,7 +313,7 @@ export default function BuddyManagerModal({ isOpen, onClose, buddies = [], onBud
               )}
             </div>
 
-            {buddies.length === 0 && !adding && (
+            {buddiesList.length === 0 && !adding && (
               <div className="p-6 border-2 border-dashed border-slate-200 rounded-2xl text-center space-y-2">
                 <Users className="w-8 h-8 text-slate-300 mx-auto" />
                 <p className="text-xs font-bold text-slate-700">No Trusted Friends Added</p>
@@ -314,7 +331,7 @@ export default function BuddyManagerModal({ isOpen, onClose, buddies = [], onBud
               </div>
             )}
 
-            {buddies.map((buddy) => {
+            {buddiesList.map((buddy) => {
               const isPending = buddy.status === 'pending';
 
               return (

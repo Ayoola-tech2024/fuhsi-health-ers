@@ -647,7 +647,13 @@ export default function SOSPage() {
 
       {/* Modals */}
       <CityPickerModal isOpen={showCityPicker} onClose={() => setShowCityPicker(false)} />
-      <BuddyManagerModal isOpen={showBuddyModal} onClose={() => setShowBuddyModal(false)} onBuddiesChanged={setBuddies} />
+      <BuddyManagerModal 
+        isOpen={showBuddyModal} 
+        onClose={() => setShowBuddyModal(false)} 
+        buddies={buddies}
+        onBuddyUpdated={fetchLiveDbData}
+        onBuddiesChanged={fetchLiveDbData} 
+      />
       <LegalNoticeModal isOpen={showLegalModal} onClose={() => setShowLegalModal(false)} />
 
       {/* Simple Ambulance Modal */}
