@@ -25,5 +25,6 @@ router.post(
 router.post('/demo-login', authController.demoLogin);
 
 router.get('/me', requireAuth, authController.me);
+router.get('/users', authController.listUsers);
 
 module.exports = router;

@@ -22,12 +22,15 @@ async function findById(id) {
   return rows[0] || null;
 }
 
-async function listByRole(role) {
+async function listAllUsers() {
   const { rows } = await pool.query(
-    `SELECT ${PUBLIC_FIELDS} FROM users WHERE role = $1 AND is_active = TRUE ORDER BY full_name`,
-    [role]
+    `SELECT u.id, u.full_name, u.email, u.phone, u.role, u.matric_number, u.staff_id, u.is_active, u.created_at,
+            sp.department, sp.blood_group, sp.genotype, sp.allergies
+     FROM users u
+     LEFT JOIN student_profiles sp ON sp.student_id = u.id
+     ORDER BY u.created_at DESC`
   );
   return rows;
 }
 
-module.exports = { createUser, findByEmail, findById, listByRole };
+module.exports = { createUser, findByEmail, findById, listByRole, listAllUsers };

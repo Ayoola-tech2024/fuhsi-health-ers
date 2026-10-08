@@ -201,4 +201,9 @@ const me = asyncHandler(async (req, res) => {
   res.json({ user, profile });
 });
 
-module.exports = { register, login, demoLogin, me };
+const listUsers = asyncHandler(async (req, res) => {
+  const users = await userModel.listAllUsers();
+  res.json({ count: users.length, users });
+});
+
+module.exports = { register, login, demoLogin, me, listUsers };
