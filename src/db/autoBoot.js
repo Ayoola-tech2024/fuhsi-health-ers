@@ -108,28 +108,118 @@ async function autoBootDb() {
       }
     }
 
-    // Check demo users
-    const userCheck = await pool.query('SELECT count(*) FROM users;');
-    if (parseInt(userCheck.rows[0].count, 10) === 0) {
-      const passwordHash = await bcrypt.hash('password123', 10);
-      const demoUsers = [
-        ['student@fuhsi.edu.ng', passwordHash, 'FUHSI Student', '+234 803 123 4567', 'student', 'FUHSI/2023/MBBS/0142', null],
-        ['doctor@fuhsi.edu.ng', passwordHash, 'Dr. Medical Officer', '+234 802 987 6543', 'clinician', null, 'DOC-FUHSI-088'],
-        ['responder@fuhsi.edu.ng', passwordHash, 'Officer Responder', '+234 814 555 0199', 'responder', null, 'EMS-FUHSI-012'],
-        ['admin@fuhsi.edu.ng', passwordHash, 'Campus Health Admin', '+234 800 111 0000', 'admin', null, 'ADM-FUHSI-001'],
-      ];
+    // Seed / Guarantee Verified Demo & Test Users
+    console.log('🌱 Verifying test students, clinician, and EMS responder accounts...');
+    const passwordHash = await bcrypt.hash('password123', 10);
+    const demoUsers = [
+      // 3 Test Students
+      {
+        email: 'student@fuhsi.edu.ng',
+        fullName: 'Chioma Okeke',
+        phone: '+234 803 123 4567',
+        role: 'student',
+        matricNumber: 'FUHSI/2023/MBBS/0142',
+        staffId: null,
+        profile: {
+          bloodGroup: 'O+',
+          genotype: 'AA',
+          allergies: ['Penicillin'],
+          department: 'Medicine & Surgery (MBBS)',
+          hostelOrAddress: 'Hostel A, Room 104'
+        }
+      },
+      {
+        email: 'student2@fuhsi.edu.ng',
+        fullName: 'Emeka Adeyemi',
+        phone: '+234 802 345 6789',
+        role: 'student',
+        matricNumber: 'FUHSI/2023/NURS/0088',
+        staffId: null,
+        profile: {
+          bloodGroup: 'A+',
+          genotype: 'AS',
+          allergies: ['Peanuts'],
+          department: 'Nursing Science',
+          hostelOrAddress: 'Hostel B, Room 212'
+        }
+      },
+      {
+        email: 'student3@fuhsi.edu.ng',
+        fullName: 'Amina Bello',
+        phone: '+234 805 678 9012',
+        role: 'student',
+        matricNumber: 'FUHSI/2023/MLS/0055',
+        staffId: null,
+        profile: {
+          bloodGroup: 'B+',
+          genotype: 'AA',
+          allergies: ['Sulfa drugs'],
+          department: 'Medical Laboratory Science',
+          hostelOrAddress: 'Hostel C, Room 305'
+        }
+      },
+      // 1 Doctor / Clinician
+      {
+        email: 'doctor@fuhsi.edu.ng',
+        fullName: 'Dr. Olawale Babatunde',
+        phone: '+234 802 987 6543',
+        role: 'clinician',
+        matricNumber: null,
+        staffId: 'DOC-FUHSI-088'
+      },
+      // 1 EMS / Responder
+      {
+        email: 'responder@fuhsi.edu.ng',
+        fullName: 'Officer Tunde Williams',
+        phone: '+234 814 555 0199',
+        role: 'responder',
+        matricNumber: null,
+        staffId: 'EMS-FUHSI-012'
+      },
+      // Admin
+      {
+        email: 'admin@fuhsi.edu.ng',
+        fullName: 'Campus Health Admin',
+        phone: '+234 800 111 0000',
+        role: 'admin',
+        matricNumber: null,
+        staffId: 'ADM-FUHSI-001'
+      }
+    ];
 
-      for (const u of demoUsers) {
+    for (const u of demoUsers) {
+      const res = await pool.query(
+        `INSERT INTO users (email, password_hash, full_name, phone, role, matric_number, staff_id, is_active)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, TRUE)
+         ON CONFLICT (email) DO UPDATE SET
+           password_hash = EXCLUDED.password_hash,
+           full_name = EXCLUDED.full_name,
+           phone = EXCLUDED.phone,
+           matric_number = EXCLUDED.matric_number,
+           staff_id = EXCLUDED.staff_id,
+           is_active = TRUE
+         RETURNING id`,
+        [u.email, passwordHash, u.fullName, u.phone, u.role, u.matricNumber, u.staffId]
+      );
+
+      const userId = res.rows[0]?.id;
+      if (userId && u.profile) {
         await pool.query(
-          `INSERT INTO users (email, password_hash, full_name, phone, role, matric_number, staff_id)
-           VALUES ($1, $2, $3, $4, $5, $6, $7)
-           ON CONFLICT (email) DO NOTHING`,
-          u
+          `INSERT INTO student_profiles (student_id, department, blood_group, genotype, allergies, hostel_or_address, updated_at)
+           VALUES ($1, $2, $3, $4, $5, $6, now())
+           ON CONFLICT (student_id) DO UPDATE SET
+             department = EXCLUDED.department,
+             blood_group = EXCLUDED.blood_group,
+             genotype = EXCLUDED.genotype,
+             allergies = EXCLUDED.allergies,
+             hostel_or_address = EXCLUDED.hostel_or_address,
+             updated_at = now()`,
+          [userId, u.profile.department, u.profile.bloodGroup, u.profile.genotype, u.profile.allergies, u.profile.hostelOrAddress]
         );
       }
-
-      console.log('✅ Initial database seed completed.');
     }
+
+    console.log('✅ 3 test students, 1 doctor, and 1 EMS responder seeded and verified.');
   } catch (err) {
     console.error('❌ Auto-migration / seed error:', err.message);
   }

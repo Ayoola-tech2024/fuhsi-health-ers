@@ -62,6 +62,9 @@ export function AuthProvider({ children }) {
     // Attempt real login against seeded database demo accounts
     const credentials = {
       student: { email: 'student@fuhsi.edu.ng', password: 'password123' },
+      student1: { email: 'student@fuhsi.edu.ng', password: 'password123' },
+      student2: { email: 'student2@fuhsi.edu.ng', password: 'password123' },
+      student3: { email: 'student3@fuhsi.edu.ng', password: 'password123' },
       clinician: { email: 'doctor@fuhsi.edu.ng', password: 'password123' },
       responder: { email: 'responder@fuhsi.edu.ng', password: 'password123' },
     };
