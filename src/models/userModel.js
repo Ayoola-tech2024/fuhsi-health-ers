@@ -22,6 +22,14 @@ async function findById(id) {
   return rows[0] || null;
 }
 
+async function listByRole(role) {
+  const { rows } = await pool.query(
+    `SELECT ${PUBLIC_FIELDS} FROM users WHERE role = $1 AND is_active = TRUE ORDER BY full_name`,
+    [role]
+  );
+  return rows;
+}
+
 async function listAllUsers() {
   const { rows } = await pool.query(
     `SELECT u.id, u.full_name, u.email, u.phone, u.role, u.matric_number, u.staff_id, u.is_active, u.created_at,

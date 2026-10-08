@@ -163,6 +163,9 @@ CREATE TABLE IF NOT EXISTS notifications (
 CREATE TABLE IF NOT EXISTS trusted_buddies (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   student_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  buddy_user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  status TEXT NOT NULL DEFAULT 'accepted',
+  requested_by UUID REFERENCES users(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
   phone TEXT NOT NULL,
   matric_number TEXT,
