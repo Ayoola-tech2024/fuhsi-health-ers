@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback } from 'react';
-import { useLocation } from '../context/LocationContext';
+import { useLocation, REGIONAL_HUBS } from '../context/LocationContext';
 import { 
   Building2, 
   Phone, 
@@ -10,9 +10,9 @@ import {
   Crosshair, 
   Compass, 
   ShieldCheck, 
-  Activity,
-  Search,
-  Sparkles,
+  Activity, 
+  Search, 
+  Sparkles, 
   Globe
 } from 'lucide-react';
 import EmergencyMap from '../components/EmergencyMap';
@@ -38,6 +38,7 @@ export default function FacilitiesPage() {
     locationSource, 
     isLocating, 
     refreshLocation,
+    setManualCity,
     facilities,
     setFacilities,
     facilitiesLoading 
@@ -152,63 +153,92 @@ export default function FacilitiesPage() {
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto px-4 -mt-8 space-y-5">
-        {/* Live Location Card with Instant Global Cache */}
-        <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-200 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center space-x-3">
-            <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
-              locationSource === 'gps' ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-blue-600'
-            }`}>
-              {locationSource === 'gps' ? (
-                <Crosshair className="w-5 h-5 text-emerald-600 animate-pulse" />
-              ) : (
-                <Globe className="w-5 h-5 text-blue-600" />
-              )}
-            </div>
-            <div>
-              <div className="flex items-center space-x-2">
-                <span className="text-xs font-extrabold text-slate-900">{locationName}</span>
-                {locationSource === 'gps' && gpsAccuracy && (
-                  <span className="px-1.5 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] rounded font-mono font-bold">
-                    GPS ±{gpsAccuracy}m
-                  </span>
-                )}
-                {locationSource === 'ip' && (
-                  <span className="px-1.5 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 text-[10px] rounded font-medium">
-                    Regional IP
-                  </span>
+      <div className="max-w-4xl mx-auto px-4 -mt-8 space-y-4">
+        {/* Live Location Card with Instant City Override */}
+        <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-200 space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center space-x-3">
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+                locationSource === 'gps' ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-blue-600'
+              }`}>
+                {locationSource === 'gps' ? (
+                  <Crosshair className="w-5 h-5 text-emerald-600 animate-pulse" />
+                ) : (
+                  <Globe className="w-5 h-5 text-blue-600" />
                 )}
               </div>
-              <p className="text-[11px] text-slate-500 font-mono">
-                {userLocation ? `${userLocation.latitude.toFixed(4)}° N, ${userLocation.longitude.toFixed(4)}° E` : 'Pinpointing location...'}
-              </p>
+              <div>
+                <div className="flex items-center space-x-2">
+                  <span className="text-xs font-extrabold text-slate-900">{locationName}</span>
+                  {locationSource === 'gps' && gpsAccuracy && (
+                    <span className="px-1.5 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] rounded font-mono font-bold">
+                      GPS ±{gpsAccuracy}m
+                    </span>
+                  )}
+                  {locationSource === 'manual' && (
+                    <span className="px-1.5 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 text-[10px] rounded font-bold">
+                      Active Hub
+                    </span>
+                  )}
+                </div>
+                <p className="text-[11px] text-slate-500 font-mono">
+                  {userLocation ? `${userLocation.latitude.toFixed(4)}° N, ${userLocation.longitude.toFixed(4)}° E` : 'Pinpointing location...'}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <button
+                type="button"
+                onClick={() => refreshLocation({ highAccuracy: true, bypassCache: true })}
+                disabled={isLocating}
+                className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold flex items-center space-x-1.5 transition-colors border border-slate-200 active:scale-95 cursor-pointer disabled:opacity-60"
+              >
+                {isLocating ? <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-600" /> : <Compass className="w-3.5 h-3.5 text-blue-600" />}
+                <span>{isLocating ? 'Locating...' : 'Auto-Detect GPS'}</span>
+              </button>
+              <button
+                type="button"
+                onClick={handleDiscoverOverpass}
+                disabled={discoveringNearby}
+                className="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 rounded-xl text-xs font-bold flex items-center space-x-1.5 transition-colors border border-emerald-200 active:scale-95 disabled:opacity-50 cursor-pointer"
+                title="Query OpenStreetMap for hospitals in your immediate surrounding area"
+              >
+                {discoveringNearby ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+                )}
+                <span>{discoveringNearby ? 'Scanning...' : 'Scan Local Area'}</span>
+              </button>
             </div>
           </div>
 
-          <div className="flex items-center space-x-2">
-            <button
-              type="button"
-              onClick={() => refreshLocation({ highAccuracy: true, bypassCache: true })}
-              disabled={isLocating}
-              className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold flex items-center space-x-1.5 transition-colors border border-slate-200 active:scale-95 cursor-pointer disabled:opacity-60"
-            >
-              {isLocating ? <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-600" /> : <Compass className="w-3.5 h-3.5 text-blue-600" />}
-              <span>{isLocating ? 'Locating...' : 'Locate Me'}</span>
-            </button>
-            <button
-              type="button"
-              onClick={handleDiscoverOverpass}
-              disabled={discoveringNearby}
-              className="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 rounded-xl text-xs font-bold flex items-center space-x-1.5 transition-colors border border-emerald-200 active:scale-95 disabled:opacity-50 cursor-pointer"
-              title="Query OpenStreetMap for hospitals in your immediate surrounding area"
-            >
-              {discoveringNearby ? (
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-              ) : (
-                <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
-              )}
-              <span>{discoveringNearby ? 'Scanning...' : 'Scan Local Area'}</span>
-            </button>
+          {/* 1-Tap Quick Regional Hub Selector */}
+          <div className="pt-2 border-t border-slate-100">
+            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+              Select Active City / Campus Hub:
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {REGIONAL_HUBS.map((hub) => {
+                const isSelected = locationName.toLowerCase().includes(hub.id) || locationName.toLowerCase().includes(hub.name.toLowerCase().split(' ')[0]);
+                return (
+                  <button
+                    key={hub.id}
+                    type="button"
+                    onClick={() => setManualCity(hub.id)}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center space-x-1 ${
+                      isSelected
+                        ? 'bg-blue-600 text-white shadow-sm ring-2 ring-blue-600/30'
+                        : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200'
+                    }`}
+                  >
+                    <span>📍 {hub.name.split(' ')[0]}</span>
+                    {isSelected && <ShieldCheck className="w-3 h-3 text-white ml-0.5" />}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
 
@@ -241,7 +271,7 @@ export default function FacilitiesPage() {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search by facility name, city (e.g. Lagos, Abuja, Ado-Ekiti, Ibadan)..."
+              placeholder="Search by facility name, city (e.g. Akure, Ado-Ekiti, Ila, Osogbo, Ibadan)..."
               className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 shadow-sm"
             />
           </div>

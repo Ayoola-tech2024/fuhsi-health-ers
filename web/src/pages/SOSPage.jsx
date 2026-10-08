@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { useLocation } from '../context/LocationContext';
+import { useLocation, REGIONAL_HUBS } from '../context/LocationContext';
 import { api } from '../services/api';
 import {
   Bell,
@@ -55,7 +55,8 @@ export default function SOSPage() {
     locationName, 
     gpsAccuracy: globalGpsAccuracy, 
     locationSource, 
-    refreshLocation 
+    refreshLocation,
+    setManualCity 
   } = useLocation();
 
   const [coords, setCoords] = useState(userLocation || { latitude: 8.0194, longitude: 4.9042 });
@@ -572,6 +573,42 @@ export default function SOSPage() {
               <span className="text-[10px] text-slate-500 block font-medium">Ready for SOS</span>
             </div>
           )}
+        </div>
+
+        {/* 2.2. Fast City / Campus Hub Selector */}
+        <div className="bg-white rounded-2xl p-3 shadow-sm border border-slate-200 space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold text-slate-700 flex items-center space-x-1.5">
+              <MapPin className="w-3.5 h-3.5 text-blue-600" />
+              <span>Active City / Campus Hub: <strong className="text-slate-900">{locationName}</strong></span>
+            </span>
+            <button
+              type="button"
+              onClick={() => refreshLocation({ highAccuracy: true, bypassCache: true })}
+              className="text-[10px] font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 px-2 py-0.5 rounded border border-blue-200 transition-colors"
+            >
+              🛰️ Auto GPS
+            </button>
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {REGIONAL_HUBS.map((hub) => {
+              const isSelected = locationName.toLowerCase().includes(hub.id) || locationName.toLowerCase().includes(hub.name.toLowerCase().split(' ')[0]);
+              return (
+                <button
+                  key={hub.id}
+                  type="button"
+                  onClick={() => setManualCity(hub.id)}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center space-x-1 ${
+                    isSelected
+                      ? 'bg-blue-600 text-white shadow-sm ring-2 ring-blue-600/30'
+                      : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200'
+                  }`}
+                >
+                  <span>📍 {hub.name.split(' ')[0]}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         {/* 2.5. Buddy SOS / Emergency Target Switcher (Proxy SOS) */}
