@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { api } from '../services/api';
 import { 
   Building2, 
@@ -17,6 +17,7 @@ import {
 import EmergencyMap from '../components/EmergencyMap';
 
 function getGeodesicDistanceKm(lat1, lon1, lat2, lon2) {
+  if (lat1 == null || lon1 == null || lat2 == null || lon2 == null) return 0;
   const R = 6371;
   const dLat = ((lat2 - lat1) * Math.PI) / 180;
   const dLon = ((lon2 - lon1) * Math.PI) / 180;
@@ -30,11 +31,11 @@ function getGeodesicDistanceKm(lat1, lon1, lat2, lon2) {
 
 function detectRegionName(lat, lng) {
   if (!lat || !lng) return 'FUHSI Network';
-  // Ado-Ekiti corridor (~ 7.55 to 7.75 N, 5.15 to 5.40 E)
+  // Ado-Ekiti corridor (~ 7.50 to 7.75 N, 5.10 to 5.45 E)
   if (lat >= 7.50 && lat <= 7.75 && lng >= 5.10 && lng <= 5.45) {
     return 'Ado-Ekiti & Ekiti Central';
   }
-  // Ila-Orangun corridor (~ 7.95 to 8.10 N, 4.80 to 5.00 E)
+  // Ila-Orangun corridor (~ 7.95 to 8.12 N, 4.80 to 5.00 E)
   if (lat >= 7.95 && lat <= 8.12 && lng >= 4.80 && lng <= 5.00) {
     return 'Ila-Orangun (Main Campus)';
   }
@@ -42,7 +43,7 @@ function detectRegionName(lat, lng) {
   if (lat >= 7.70 && lat <= 7.85 && lng >= 4.45 && lng <= 4.65) {
     return 'Osogbo Metropolis';
   }
-  // Offa corridor (~ 8.10 to 8.20 N, 4.65 to 4.80 E)
+  // Offa corridor (~ 8.10 to 8.25 N, 4.65 to 4.80 E)
   if (lat >= 8.10 && lat <= 8.25 && lng >= 4.65 && lng <= 4.80) {
     return 'Offa / Kwara South';
   }
@@ -62,25 +63,29 @@ export default function FacilitiesPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [discoveringNearby, setDiscoveringNearby] = useState(false);
 
-  // 1. Acquire Live GPS Position
+  const lastCoordsRef = useRef(null);
+
+  // 1. Acquire Live GPS Position (Throttled to prevent re-render thrashing)
   const acquireGps = useCallback(() => {
     if (!navigator.geolocation) return;
 
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        const coords = {
-          latitude: Number(pos.coords.latitude),
-          longitude: Number(pos.coords.longitude),
-        };
-        setUserLocation(coords);
-        setGpsAccuracy(Math.round(pos.coords.accuracy || 10));
+        const lat = Number(pos.coords.latitude);
+        const lng = Number(pos.coords.longitude);
+        const accuracy = Math.round(pos.coords.accuracy || 10);
+        
+        lastCoordsRef.current = { latitude: lat, longitude: lng };
+        setUserLocation({ latitude: lat, longitude: lng });
+        setGpsAccuracy(accuracy);
       },
       (err) => {
         console.warn('Live GPS acquisition notice:', err.message);
-        // Fallback default coordinates
-        setUserLocation({ latitude: 8.0194, longitude: 4.9042 });
+        const fallback = { latitude: 8.0194, longitude: 4.9042 };
+        lastCoordsRef.current = fallback;
+        setUserLocation(fallback);
       },
-      { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
+      { enableHighAccuracy: true, timeout: 8000, maximumAge: 10000 }
     );
   }, []);
 
@@ -91,14 +96,29 @@ export default function FacilitiesPage() {
     if (navigator.geolocation) {
       watchId = navigator.geolocation.watchPosition(
         (pos) => {
-          setUserLocation({
-            latitude: Number(pos.coords.latitude),
-            longitude: Number(pos.coords.longitude),
-          });
-          setGpsAccuracy(Math.round(pos.coords.accuracy || 10));
+          const lat = Number(pos.coords.latitude);
+          const lng = Number(pos.coords.longitude);
+          const accuracy = Math.round(pos.coords.accuracy || 10);
+
+          // Only update state if moved significantly (> 15 meters) to avoid continuous screen jitter
+          if (lastCoordsRef.current) {
+            const diffKm = getGeodesicDistanceKm(
+              lastCoordsRef.current.latitude,
+              lastCoordsRef.current.longitude,
+              lat,
+              lng
+            );
+            if (diffKm < 0.015) {
+              return; // Ignore minor hardware sensor noise
+            }
+          }
+
+          lastCoordsRef.current = { latitude: lat, longitude: lng };
+          setUserLocation({ latitude: lat, longitude: lng });
+          setGpsAccuracy(accuracy);
         },
         () => {},
-        { enableHighAccuracy: true, maximumAge: 5000 }
+        { enableHighAccuracy: true, maximumAge: 10000 }
       );
     }
 
@@ -107,30 +127,16 @@ export default function FacilitiesPage() {
     };
   }, [acquireGps]);
 
-  // 2. Fetch Facilities from Database (with user coords for live distance ranking)
+  // 2. Fetch Facilities from Database ONCE on mount
   useEffect(() => {
     let isMounted = true;
+
     async function loadFacilities() {
       try {
         setLoading(true);
-        const res = await api.getFacilities(userLocation);
+        const res = await api.getFacilities();
         if (isMounted && res && res.facilities) {
-          let list = res.facilities;
-          
-          // Ensure distance calculation is accurate from user location
-          if (userLocation) {
-            list = list.map((f) => {
-              const dist = getGeodesicDistanceKm(
-                userLocation.latitude,
-                userLocation.longitude,
-                Number(f.latitude),
-                Number(f.longitude)
-              );
-              return { ...f, distanceKm: dist };
-            }).sort((a, b) => (a.distanceKm || 0) - (b.distanceKm || 0));
-          }
-
-          setFacilities(list);
+          setFacilities(res.facilities);
         }
       } catch (err) {
         console.warn('Failed to load facilities:', err.message);
@@ -141,9 +147,25 @@ export default function FacilitiesPage() {
 
     loadFacilities();
     return () => { isMounted = false; };
-  }, [userLocation]);
+  }, []);
 
-  // 3. Optional OpenStreetMap Overpass live local discovery for any location in Nigeria
+  // 3. Compute live distance and ranking client-side without re-fetching network
+  const rankedFacilities = useMemo(() => {
+    if (!facilities || facilities.length === 0) return [];
+    if (!userLocation) return facilities;
+
+    return facilities.map((f) => {
+      const dist = getGeodesicDistanceKm(
+        userLocation.latitude,
+        userLocation.longitude,
+        Number(f.latitude),
+        Number(f.longitude)
+      );
+      return { ...f, distanceKm: dist };
+    }).sort((a, b) => (a.distanceKm || 0) - (b.distanceKm || 0));
+  }, [facilities, userLocation]);
+
+  // 4. Optional OpenStreetMap Overpass live local discovery for any location in Nigeria
   const handleDiscoverOverpass = async () => {
     if (!userLocation) return;
     try {
@@ -179,8 +201,7 @@ export default function FacilitiesPage() {
         setFacilities((prev) => {
           const existingNames = new Set(prev.map((f) => f.name.toLowerCase()));
           const uniqueDiscovered = discovered.filter((d) => !existingNames.has(d.name.toLowerCase()));
-          const combined = [...prev, ...uniqueDiscovered];
-          return combined.sort((a, b) => (a.distanceKm || 0) - (b.distanceKm || 0));
+          return [...prev, ...uniqueDiscovered];
         });
       }
     } catch (err) {
@@ -190,27 +211,29 @@ export default function FacilitiesPage() {
     }
   };
 
-  // Filter facilities
-  const filteredFacilities = facilities.filter((fac) => {
-    // Search query filter
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      const matchName = fac.name?.toLowerCase().includes(q);
-      const matchType = fac.facility_type?.toLowerCase().includes(q);
-      const matchAddr = fac.address?.toLowerCase().includes(q);
-      if (!matchName && !matchType && !matchAddr) return false;
-    }
+  // 5. Filter facilities based on search and category
+  const filteredFacilities = useMemo(() => {
+    return rankedFacilities.filter((fac) => {
+      // Search query filter
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase();
+        const matchName = fac.name?.toLowerCase().includes(q);
+        const matchType = fac.facility_type?.toLowerCase().includes(q);
+        const matchAddr = fac.address?.toLowerCase().includes(q);
+        if (!matchName && !matchType && !matchAddr) return false;
+      }
 
-    // Category filter
-    if (filterType === 'nearby') {
-      return (fac.distanceKm || 0) <= 25;
-    }
-    if (filterType === 'hospital') {
-      const type = (fac.facility_type || '').toLowerCase();
-      return type.includes('hospital') || type.includes('trauma') || type.includes('referral');
-    }
-    return true;
-  });
+      // Category filter
+      if (filterType === 'nearby') {
+        return (fac.distanceKm || 0) <= 25;
+      }
+      if (filterType === 'hospital') {
+        const type = (fac.facility_type || '').toLowerCase();
+        return type.includes('hospital') || type.includes('trauma') || type.includes('referral');
+      }
+      return true;
+    });
+  }, [rankedFacilities, searchQuery, filterType]);
 
   const activeRegion = userLocation ? detectRegionName(userLocation.latitude, userLocation.longitude) : 'Campus Network';
 
@@ -256,7 +279,7 @@ export default function FacilitiesPage() {
             <button
               type="button"
               onClick={acquireGps}
-              className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold flex items-center space-x-1.5 transition-colors border border-slate-200 active:scale-95"
+              className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold flex items-center space-x-1.5 transition-colors border border-slate-200 active:scale-95 cursor-pointer"
             >
               <Compass className="w-3.5 h-3.5 text-blue-600" />
               <span>Refresh GPS</span>
@@ -265,7 +288,7 @@ export default function FacilitiesPage() {
               type="button"
               onClick={handleDiscoverOverpass}
               disabled={discoveringNearby}
-              className="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 rounded-xl text-xs font-bold flex items-center space-x-1.5 transition-colors border border-emerald-200 active:scale-95 disabled:opacity-50"
+              className="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 rounded-xl text-xs font-bold flex items-center space-x-1.5 transition-colors border border-emerald-200 active:scale-95 disabled:opacity-50 cursor-pointer"
               title="Query OpenStreetMap for hospitals in your immediate surrounding area"
             >
               {discoveringNearby ? (
@@ -279,27 +302,25 @@ export default function FacilitiesPage() {
         </div>
 
         {/* Interactive Multi-Facility Map Banner */}
-        {!loading && facilities.length > 0 && (
-          <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-200">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center space-x-2">
-                <MapPin className="w-4 h-4 text-emerald-600" />
-                <h2 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
-                  Interactive Live Emergency Radar
-                </h2>
-              </div>
-              <span className="text-[10px] text-slate-500 font-medium">
-                {facilities.length} Health Stations Mapped
-              </span>
+        <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-200">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center space-x-2">
+              <MapPin className="w-4 h-4 text-emerald-600" />
+              <h2 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+                Interactive Live Emergency Radar
+              </h2>
             </div>
-            <EmergencyMap
-              studentCoords={userLocation || { latitude: 8.0194, longitude: 4.9042 }}
-              facilities={filteredFacilities.length > 0 ? filteredFacilities : facilities}
-              studentName="Your Current Location"
-              height="260px"
-            />
+            <span className="text-[10px] text-slate-500 font-medium">
+              {rankedFacilities.length} Stations Mapped
+            </span>
           </div>
-        )}
+          <EmergencyMap
+            studentCoords={userLocation || { latitude: 8.0194, longitude: 4.9042 }}
+            facilities={filteredFacilities.length > 0 ? filteredFacilities : rankedFacilities}
+            studentName="Your Current Location"
+            height="260px"
+          />
+        </div>
 
         {/* Search & Filter Bar */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
@@ -318,18 +339,18 @@ export default function FacilitiesPage() {
             <button
               type="button"
               onClick={() => setFilterType('all')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                 filterType === 'all'
                   ? 'bg-white text-slate-900 shadow-sm'
                   : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              All ({facilities.length})
+              All ({rankedFacilities.length})
             </button>
             <button
               type="button"
               onClick={() => setFilterType('nearby')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                 filterType === 'nearby'
                   ? 'bg-white text-emerald-700 shadow-sm'
                   : 'text-slate-600 hover:text-slate-900'
@@ -340,7 +361,7 @@ export default function FacilitiesPage() {
             <button
               type="button"
               onClick={() => setFilterType('hospital')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                 filterType === 'hospital'
                   ? 'bg-white text-blue-700 shadow-sm'
                   : 'text-slate-600 hover:text-slate-900'
@@ -355,7 +376,7 @@ export default function FacilitiesPage() {
         {loading ? (
           <div className="bg-white rounded-2xl p-12 border border-slate-200 text-center flex flex-col items-center justify-center">
             <Loader2 className="w-8 h-8 text-blue-600 animate-spin mb-2" />
-            <p className="text-xs text-slate-500 font-medium">Calculating proximity to regional health stations...</p>
+            <p className="text-xs text-slate-500 font-medium">Loading regional health stations...</p>
           </div>
         ) : filteredFacilities.length === 0 ? (
           <div className="bg-white rounded-2xl p-8 border border-slate-200 text-center">
@@ -372,7 +393,7 @@ export default function FacilitiesPage() {
                   key={fac.id || fac.name}
                   className={`bg-white rounded-2xl p-5 shadow-sm border transition-all flex flex-col justify-between ${
                     isNearest 
-                      ? 'border-emerald-500 ring-1 ring-emerald-500/20 shadow-emerald-500/5' 
+                       ? 'border-emerald-500 ring-1 ring-emerald-500/20 shadow-emerald-500/5' 
                       : 'border-slate-200 hover:border-slate-300'
                   }`}
                 >
