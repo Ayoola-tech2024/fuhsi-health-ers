@@ -59,17 +59,29 @@ export function AuthProvider({ children }) {
   };
 
   const loginAsDemo = async (role = 'student') => {
-    // Attempt real login against seeded database demo accounts
-    const credentials = {
-      student: { email: 'student@fuhsi.edu.ng', password: 'password123' },
-      student1: { email: 'student@fuhsi.edu.ng', password: 'password123' },
-      student2: { email: 'student2@fuhsi.edu.ng', password: 'password123' },
-      student3: { email: 'student3@fuhsi.edu.ng', password: 'password123' },
-      clinician: { email: 'doctor@fuhsi.edu.ng', password: 'password123' },
-      responder: { email: 'responder@fuhsi.edu.ng', password: 'password123' },
-    };
-    const cred = credentials[role] || credentials.student;
-    return await login(cred.email, cred.password);
+    try {
+      const data = await api.demoLogin(role);
+      if (!data.token || !data.user) {
+        throw new Error(data.message || 'Demo login failed');
+      }
+      localStorage.setItem('fuhsi_token', data.token);
+      localStorage.setItem('fuhsi_user_data', JSON.stringify(data.user));
+      setToken(data.token);
+      setUser(data.user);
+      return data.user;
+    } catch (err) {
+      // Fallback to regular login
+      const credentials = {
+        student: { email: 'student@fuhsi.edu.ng', password: 'password123' },
+        student1: { email: 'student@fuhsi.edu.ng', password: 'password123' },
+        student2: { email: 'student2@fuhsi.edu.ng', password: 'password123' },
+        student3: { email: 'student3@fuhsi.edu.ng', password: 'password123' },
+        clinician: { email: 'doctor@fuhsi.edu.ng', password: 'password123' },
+        responder: { email: 'responder@fuhsi.edu.ng', password: 'password123' },
+      };
+      const cred = credentials[role] || credentials.student;
+      return await login(cred.email, cred.password);
+    }
   };
 
   const register = async (payload) => {

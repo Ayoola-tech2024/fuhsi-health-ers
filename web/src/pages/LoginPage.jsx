@@ -9,9 +9,8 @@ import {
   Stethoscope,
   AlertCircle,
   Truck,
-  CheckCircle2,
   Users,
-  Key
+  Loader2
 } from 'lucide-react';
 
 export default function LoginPage() {
@@ -49,18 +48,18 @@ export default function LoginPage() {
       else if (user?.role === 'clinician') navigate('/clinician');
       else navigate('/');
     } catch (err) {
-      setError(err.message || 'Demo login failed. Please check credentials or try again.');
+      setError(err.message || 'Demo login failed. Please try again.');
     } finally {
       setDemoLoading(null);
     }
   };
 
   const testAccounts = [
-    { role: 'student1', label: 'Student 1 (Chioma)', email: 'student@fuhsi.edu.ng', matric: 'FUHSI/2023/MBBS/0142', icon: User, color: 'text-red-600 bg-red-50 hover:bg-red-100 border-red-200' },
-    { role: 'student2', label: 'Student 2 (Emeka)', email: 'student2@fuhsi.edu.ng', matric: 'FUHSI/2023/NURS/0088', icon: Users, color: 'text-purple-600 bg-purple-50 hover:bg-purple-100 border-purple-200' },
-    { role: 'student3', label: 'Student 3 (Amina)', email: 'student3@fuhsi.edu.ng', matric: 'FUHSI/2023/MLS/0055', icon: User, color: 'text-blue-600 bg-blue-50 hover:bg-blue-100 border-blue-200' },
-    { role: 'clinician', label: 'Doctor (Babatunde)', email: 'doctor@fuhsi.edu.ng', matric: 'DOC-FUHSI-088', icon: Stethoscope, color: 'text-emerald-600 bg-emerald-50 hover:bg-emerald-100 border-emerald-200' },
-    { role: 'responder', label: 'EMS (Tunde)', email: 'responder@fuhsi.edu.ng', matric: 'EMS-FUHSI-012', icon: Truck, color: 'text-amber-700 bg-amber-50 hover:bg-amber-100 border-amber-200' },
+    { role: 'student1', label: 'Student 1 (Chioma)', icon: User, color: 'text-red-700 bg-red-50 hover:bg-red-100 border-red-200' },
+    { role: 'student2', label: 'Student 2 (Emeka)', icon: Users, color: 'text-purple-700 bg-purple-50 hover:bg-purple-100 border-purple-200' },
+    { role: 'student3', label: 'Student 3 (Amina)', icon: User, color: 'text-blue-700 bg-blue-50 hover:bg-blue-100 border-blue-200' },
+    { role: 'clinician', label: 'Doctor (Babatunde)', icon: Stethoscope, color: 'text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border-emerald-200' },
+    { role: 'responder', label: 'EMS Responder', icon: Truck, color: 'text-amber-800 bg-amber-50 hover:bg-amber-100 border-amber-200' },
   ];
 
   return (
@@ -89,31 +88,31 @@ export default function LoginPage() {
             </div>
           )}
 
-          {/* Quick 1-Tap Demo Switcher */}
+          {/* 1-Tap Instant Login Section */}
           <div className="mb-5 p-3.5 bg-slate-50 border border-slate-200 rounded-2xl space-y-2.5">
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500">
-                1-Tap Instant Test Login
-              </span>
-              <span className="text-[10px] font-mono text-slate-400 bg-white px-2 py-0.5 rounded-md border border-slate-200">
-                Pass: password123
-              </span>
+            <div className="text-[11px] font-extrabold uppercase tracking-wider text-slate-600 text-center">
+              ⚡ 1-Tap Instant Test Login
             </div>
 
             <div className="grid grid-cols-3 gap-2">
               {testAccounts.slice(0, 3).map((acc) => {
                 const Icon = acc.icon;
+                const isLoading = demoLoading === acc.role;
                 return (
                   <button
                     key={acc.role}
                     type="button"
                     disabled={!!demoLoading}
                     onClick={() => handleDemoSelect(acc.role)}
-                    className={`p-2 rounded-xl text-[10px] font-bold flex flex-col items-center justify-center transition-all border shadow-sm active:scale-95 ${acc.color}`}
+                    className={`p-2.5 rounded-xl text-[11px] font-bold flex flex-col items-center justify-center transition-all border shadow-sm active:scale-95 disabled:opacity-60 ${acc.color}`}
                   >
-                    <Icon className="w-4 h-4 mb-1" />
+                    {isLoading ? (
+                      <Loader2 className="w-4 h-4 mb-1 animate-spin" />
+                    ) : (
+                      <Icon className="w-4 h-4 mb-1" />
+                    )}
                     <span className="truncate w-full text-center">
-                      {demoLoading === acc.role ? '...' : acc.label.split(' ')[0] + ' ' + acc.label.split(' ')[1]}
+                      {isLoading ? 'Entering...' : acc.label.replace(' (', '\n(')}
                     </span>
                   </button>
                 );
@@ -123,17 +122,22 @@ export default function LoginPage() {
             <div className="grid grid-cols-2 gap-2">
               {testAccounts.slice(3, 5).map((acc) => {
                 const Icon = acc.icon;
+                const isLoading = demoLoading === acc.role;
                 return (
                   <button
                     key={acc.role}
                     type="button"
                     disabled={!!demoLoading}
                     onClick={() => handleDemoSelect(acc.role)}
-                    className={`p-2 rounded-xl text-[10px] font-bold flex flex-col items-center justify-center transition-all border shadow-sm active:scale-95 ${acc.color}`}
+                    className={`p-2.5 rounded-xl text-[11px] font-bold flex flex-col items-center justify-center transition-all border shadow-sm active:scale-95 disabled:opacity-60 ${acc.color}`}
                   >
-                    <Icon className="w-4 h-4 mb-1" />
+                    {isLoading ? (
+                      <Loader2 className="w-4 h-4 mb-1 animate-spin" />
+                    ) : (
+                      <Icon className="w-4 h-4 mb-1" />
+                    )}
                     <span className="truncate w-full text-center">
-                      {demoLoading === acc.role ? 'Signing in...' : acc.label}
+                      {isLoading ? 'Entering...' : acc.label}
                     </span>
                   </button>
                 );
@@ -188,24 +192,6 @@ export default function LoginPage() {
             <Link to="/register" className="text-red-600 hover:text-red-700 font-bold">
               Register here
             </Link>
-          </div>
-        </div>
-
-        {/* Test Accounts Credentials Cheat Sheet */}
-        <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm text-xs space-y-2">
-          <div className="flex items-center space-x-1.5 font-bold text-slate-800">
-            <Key className="w-3.5 h-3.5 text-slate-500" />
-            <span>Test User Credentials Cheat Sheet</span>
-          </div>
-          <div className="grid grid-cols-1 gap-1.5 text-[11px] text-slate-600 font-mono bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-            <div>🎓 <strong>student@fuhsi.edu.ng</strong> | FUHSI/2023/MBBS/0142 (Chioma)</div>
-            <div>🎓 <strong>student2@fuhsi.edu.ng</strong> | FUHSI/2023/NURS/0088 (Emeka)</div>
-            <div>🎓 <strong>student3@fuhsi.edu.ng</strong> | FUHSI/2023/MLS/0055 (Amina)</div>
-            <div>🩺 <strong>doctor@fuhsi.edu.ng</strong> | DOC-FUHSI-088 (Dr. Babatunde)</div>
-            <div>🚑 <strong>responder@fuhsi.edu.ng</strong> | EMS-FUHSI-012 (Officer Williams)</div>
-            <div className="text-[10px] text-slate-400 pt-1 font-sans">
-              Password for all test accounts: <strong className="text-slate-700 font-mono">password123</strong>
-            </div>
           </div>
         </div>
       </div>
