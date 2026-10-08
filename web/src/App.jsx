@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { LocationProvider } from './context/LocationContext';
 import Navbar from './components/Navbar';
 import BottomNav from './components/BottomNav';
 import InstallPrompt from './components/InstallPrompt';
@@ -72,9 +73,11 @@ function AppContent() {
 export default function App() {
   return (
     <AuthProvider>
-      <Router>
-        <AppContent />
-      </Router>
+      <LocationProvider>
+        <Router>
+          <AppContent />
+        </Router>
+      </LocationProvider>
     </AuthProvider>
   );
 }

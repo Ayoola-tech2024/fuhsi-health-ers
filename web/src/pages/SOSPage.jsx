@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useLocation } from '../context/LocationContext';
 import { api } from '../services/api';
 import {
   Bell,
@@ -49,9 +50,17 @@ export default function SOSPage() {
   const [sosStatus, setSosStatus] = useState('reported');
   const [arming, setArming] = useState(false);
   const [countdown, setCountdown] = useState(5);
-  const [coords, setCoords] = useState({ latitude: 8.0194, longitude: 4.9042 });
-  const [gpsState, setGpsState] = useState('detecting'); // 'acquired' | 'detecting' | 'campus_fallback' | 'denied'
-  const [gpsAccuracy, setGpsAccuracy] = useState(null);
+  const { 
+    userLocation, 
+    locationName, 
+    gpsAccuracy: globalGpsAccuracy, 
+    locationSource, 
+    refreshLocation 
+  } = useLocation();
+
+  const [coords, setCoords] = useState(userLocation || { latitude: 8.0194, longitude: 4.9042 });
+  const [gpsState, setGpsState] = useState(locationSource === 'gps' ? 'acquired' : 'campus_fallback');
+  const [gpsAccuracy, setGpsAccuracy] = useState(globalGpsAccuracy || null);
   const coordsRef = useRef(coords);
 
   // Interactive Modals
@@ -75,34 +84,20 @@ export default function SOSPage() {
   const [notifications, setNotifications] = useState([]);
   const [notificationsLoading, setNotificationsLoading] = useState(false);
 
-  // High-accuracy GPS position acquirer
-  const acquireGpsPosition = (callback) => {
-    if (!navigator.geolocation) {
-      setGpsState('campus_fallback');
-      if (typeof callback === 'function') callback(coordsRef.current);
-      return;
+  // Synchronize with global location cache instantly
+  useEffect(() => {
+    if (userLocation) {
+      coordsRef.current = userLocation;
+      setCoords(userLocation);
+      setGpsAccuracy(globalGpsAccuracy);
+      setGpsState(locationSource === 'gps' ? 'acquired' : 'campus_fallback');
     }
-    setGpsState('detecting');
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const fresh = { latitude: pos.coords.latitude, longitude: pos.coords.longitude };
-        coordsRef.current = fresh;
-        setCoords(fresh);
-        setGpsAccuracy(Math.round(pos.coords.accuracy));
-        setGpsState('acquired');
-        if (typeof callback === 'function') callback(fresh);
-      },
-      (err) => {
-        console.warn('Geolocation notice:', err.message);
-        if (err.code === 1) {
-          setGpsState('denied');
-        } else {
-          setGpsState('campus_fallback');
-        }
-        if (typeof callback === 'function') callback(coordsRef.current);
-      },
-      { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
-    );
+  }, [userLocation, globalGpsAccuracy, locationSource]);
+
+  // High-accuracy GPS position refresh
+  const acquireGpsPosition = (callback) => {
+    refreshLocation({ highAccuracy: true, bypassCache: true });
+    if (typeof callback === 'function') callback(coordsRef.current);
   };
 
   // Fetch Live Data from Backend on Load
