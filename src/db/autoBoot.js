@@ -81,8 +81,11 @@ async function autoBootDb() {
       ['University of Abuja Teaching Hospital (UATH)', 'Federal Teaching Hospital', 8.9482, 7.0864, 'Gwagwalada Expressway, Gwagwalada, Abuja', '+234 803 700 8899'],
       ['Federal Medical Centre Jabi', 'Federal Medical Centre', 9.0725, 7.4230, 'Jabi District, Abuja', '+234 802 999 1100'],
 
-      // Ondo & Edo States
+      // Ondo State (Akure & Ondo Town) & Edo
+      ['State Specialist Hospital Akure', 'State Specialist & Emergency Trauma Centre', 7.2520, 5.1980, 'Hospital Road, Akure, Ondo State', '+234 802 333 4455'],
+      ['Mother and Child Hospital Akure', 'Specialist Emergency Hospital', 7.2560, 5.2010, 'Oda Road, Akure, Ondo State', '+234 803 777 8899'],
       ['University of Medical Sciences Teaching Hospital (UNIMEDTH)', 'Specialist Medical Teaching Hospital', 7.0910, 4.8320, 'Laje Road, Ondo Town', '+234 803 444 9988'],
+      ['Federal Medical Centre Owo', 'Federal Tertiary Referral Hospital', 7.1950, 5.5840, 'Owo-Akure Highway, Owo', '+234 803 555 6677'],
       ['University of Benin Teaching Hospital (UBTH)', 'Federal Tertiary Teaching Hospital', 6.3980, 5.6150, 'Ugbowo Lagos-Benin Expressway, Benin City', '+234 803 333 1199'],
 
       // Rivers & South-East Hubs
