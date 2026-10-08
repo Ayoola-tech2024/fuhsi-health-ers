@@ -19,14 +19,21 @@ import {
   AlertCircle,
   Stethoscope,
   ShieldAlert,
-  CheckCircle2,
   ArrowRight,
-  Shield
+  Shield,
+  Users
 } from 'lucide-react';
+import EmergencyMap from '../components/EmergencyMap';
+import BuddyManagerModal from '../components/BuddyManagerModal';
+import LegalNoticeModal from '../components/LegalNoticeModal';
 
 export default function StudentProfilePage() {
   const { user, logout } = useAuth();
   const isStaff = user?.role === 'clinician' || user?.role === 'responder' || user?.role === 'admin';
+
+  const [buddies, setBuddies] = useState([]);
+  const [showBuddyModal, setShowBuddyModal] = useState(false);
+  const [showLegalModal, setShowLegalModal] = useState(false);
 
   const [profile, setProfile] = useState({
     blood_group: '',
@@ -55,9 +62,10 @@ export default function StudentProfilePage() {
           setLoading(false);
           return;
         }
-        const [profRes, contactRes] = await Promise.all([
+        const [profRes, contactRes, budRes] = await Promise.all([
           api.getProfile().catch(() => ({ profile: null })),
-          api.getContacts().catch(() => ({ contacts: [] }))
+          api.getContacts().catch(() => ({ contacts: [] })),
+          api.getBuddies().catch(() => ({ buddies: [] }))
         ]);
 
         if (isMounted) {
@@ -72,6 +80,9 @@ export default function StudentProfilePage() {
           }
           if (contactRes && Array.isArray(contactRes.contacts)) {
             setContacts(contactRes.contacts);
+          }
+          if (budRes && Array.isArray(budRes.buddies)) {
+            setBuddies(budRes.buddies);
           }
         }
       } catch (err) {
@@ -519,9 +530,99 @@ export default function StudentProfilePage() {
                 </div>
               )}
             </div>
+
+            {/* Trusted Friends / Buddy SOS Card */}
+            <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center space-x-2">
+                  <Users className="w-4 h-4 text-purple-600" />
+                  <span>Trusted Friends ({buddies.length}/3)</span>
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => setShowBuddyModal(true)}
+                  className="p-1.5 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-lg transition-colors text-xs font-bold flex items-center space-x-1"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Manage</span>
+                </button>
+              </div>
+
+              <p className="text-[11px] text-slate-500 leading-relaxed">
+                Add up to 3 close friends so you can trigger emergency SOS for them if they are incapacitated, out of data, or without battery.
+              </p>
+
+              {buddies.length === 0 ? (
+                <div className="p-3.5 bg-purple-50/60 border border-dashed border-purple-200 rounded-xl text-center space-y-1.5">
+                  <Users className="w-5 h-5 text-purple-400 mx-auto" />
+                  <p className="text-[11px] font-bold text-purple-900">No Friends Added</p>
+                  <button
+                    type="button"
+                    onClick={() => setShowBuddyModal(true)}
+                    className="px-3 py-1 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-[10px] font-bold"
+                  >
+                    + Add Trusted Friend
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {buddies.map((b) => (
+                    <div key={b.id} className="p-2.5 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between">
+                      <div>
+                        <div className="flex items-center space-x-1.5">
+                          <span className="text-xs font-bold text-slate-900">{b.name}</span>
+                          {b.blood_group && (
+                            <span className="px-1 py-0.2 bg-red-100 text-red-700 text-[9px] font-extrabold rounded">
+                              {b.blood_group}
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-[10px] text-slate-500 font-mono">{b.phone}</span>
+                      </div>
+                      <span className="text-[10px] text-purple-600 font-bold bg-purple-50 px-2 py-0.5 rounded">
+                        Ready
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Legal, IP Protection & Privacy Card */}
+            <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200 text-center space-y-2">
+              <button
+                type="button"
+                onClick={() => setShowLegalModal(true)}
+                className="w-full py-2 bg-white hover:bg-slate-100 text-slate-700 rounded-xl text-xs font-bold border border-slate-200 flex items-center justify-center space-x-1.5 shadow-sm transition-colors"
+              >
+                <span>⚖️ Legal, IP & Privacy Terms</span>
+              </button>
+              <p className="text-[10px] text-slate-500 leading-tight">
+                © 2026 FUHSI ERS • Protected Proprietary Property
+              </p>
+            </div>
           </div>
         </div>
       </div>
+
+      {/* Modals */}
+      <BuddyManagerModal
+        isOpen={showBuddyModal}
+        onClose={() => setShowBuddyModal(false)}
+        buddies={buddies}
+        onBuddyUpdated={() => {
+          api.getBuddies().then((res) => {
+            if (res && Array.isArray(res.buddies)) {
+              setBuddies(res.buddies);
+            }
+          }).catch(() => {});
+        }}
+      />
+
+      <LegalNoticeModal
+        isOpen={showLegalModal}
+        onClose={() => setShowLegalModal(false)}
+      />
     </div>
   );
 }

@@ -57,6 +57,11 @@ export const api = {
   createContact: (contact) => request('/contacts', { method: 'POST', body: JSON.stringify(contact) }),
   deleteContact: (id) => request(`/contacts/${id}`, { method: 'DELETE' }),
 
+  // Trusted Friends / Buddies (Proxy SOS)
+  getBuddies: () => request('/buddies'),
+  createBuddy: (payload) => request('/buddies', { method: 'POST', body: JSON.stringify(payload) }),
+  deleteBuddy: (id) => request(`/buddies/${id}`, { method: 'DELETE' }),
+
   // Facilities
   getFacilities: (coords) => request(`/facilities${coords?.latitude && coords?.longitude ? `?lat=${coords.latitude}&lng=${coords.longitude}` : ''}`),
   getNearestFacility: (lat, lng) => request(`/facilities/nearest?lat=${lat}&lng=${lng}`),

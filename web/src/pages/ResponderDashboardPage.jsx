@@ -177,12 +177,25 @@ export default function ResponderDashboardPage() {
                   >
                     <div className="flex items-start justify-between gap-2 mb-2">
                       <div className="flex items-center space-x-2.5">
-                        <div className="p-2 bg-red-50 text-red-600 rounded-xl border border-red-100">
-                          <AlertCircle className="w-4 h-4" />
+                        <div className={`p-2 rounded-xl border ${
+                          inc.is_proxy_sos ? 'bg-purple-50 text-purple-600 border-purple-100' : 'bg-red-50 text-red-600 border-red-100'
+                        }`}>
+                          {inc.is_proxy_sos ? <span className="text-base leading-none">👥</span> : <AlertCircle className="w-4 h-4" />}
                         </div>
                         <div>
-                          <h4 className="text-xs font-bold text-slate-900">{inc.student_name || 'Anonymous Student'}</h4>
-                          <span className="text-[10px] text-slate-500">{inc.matric_number || inc.id}</span>
+                          <div className="flex items-center space-x-1.5">
+                            <h4 className="text-xs font-bold text-slate-900">
+                              {inc.is_proxy_sos && inc.patient_name ? inc.patient_name : (inc.student_name || 'Anonymous Student')}
+                            </h4>
+                            {inc.is_proxy_sos && (
+                              <span className="px-1.5 py-0.2 bg-purple-100 text-purple-800 text-[9px] font-extrabold rounded">
+                                Friend SOS
+                              </span>
+                            )}
+                          </div>
+                          <span className="text-[10px] text-slate-500">
+                            {inc.is_proxy_sos && inc.patient_matric_number ? inc.patient_matric_number : (inc.matric_number || inc.id)}
+                          </span>
                         </div>
                       </div>
                       <span className={`px-2 py-0.5 text-[10px] font-extrabold uppercase rounded border ${getBadgeStyle(inc.status)}`}>
@@ -223,45 +236,87 @@ export default function ResponderDashboardPage() {
                     </span>
                   </div>
 
-                  {/* Student & Phone */}
-                  <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 space-y-1.5">
-                    <div className="text-xs font-bold text-slate-800 flex items-center justify-between">
-                      <span>{selectedIncident.student_name || 'FUHSI Student'}</span>
-                      <span className="text-[10px] font-mono text-slate-500">{selectedIncident.matric_number || ''}</span>
-                    </div>
-                    {selectedIncident.student_phone && (
-                      <a
-                        href={`tel:${selectedIncident.student_phone}`}
-                        className="text-xs text-blue-600 hover:underline flex items-center space-x-1"
-                      >
-                        <PhoneCall className="w-3 h-3" />
-                        <span>Call Student: {selectedIncident.student_phone}</span>
-                      </a>
-                    )}
-                  </div>
-
-                  {/* Vitals Summary from DB */}
-                  <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-100 space-y-2 text-xs">
-                    <div className="font-bold text-slate-800">Student Health Snapshot (Database)</div>
-                    <div className="grid grid-cols-2 gap-2 text-xs">
-                      <div>
-                        <span className="text-[10px] text-slate-500 block">Blood Group</span>
-                        <span className="font-bold text-slate-900">{selectedIncident.blood_group || 'Not Set'}</span>
-                      </div>
-                      <div>
-                        <span className="text-[10px] text-slate-500 block">Genotype</span>
-                        <span className="font-bold text-slate-900">{selectedIncident.genotype || 'Not Set'}</span>
-                      </div>
-                      <div className="col-span-2">
-                        <span className="text-[10px] text-slate-500 block">Allergies</span>
-                        <span className="font-bold text-red-600">
-                          {Array.isArray(selectedIncident.allergies) && selectedIncident.allergies.length > 0
-                            ? selectedIncident.allergies.join(', ')
-                            : 'None Reported'}
+                  {/* Primary Patient Card (Friend in Proxy SOS or Student) */}
+                  {selectedIncident.is_proxy_sos ? (
+                    <div className="p-3.5 bg-purple-50 rounded-xl border border-purple-200 space-y-2 text-xs">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-extrabold uppercase text-purple-700 tracking-wider">
+                          🚨 Patient Under Care (Friend)
+                        </span>
+                        <span className="px-2 py-0.5 bg-purple-200 text-purple-900 rounded font-bold text-[10px]">
+                          Proxy SOS
                         </span>
                       </div>
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-sm text-purple-950">{selectedIncident.patient_name || 'Friend'}</span>
+                        <span className="text-[11px] font-mono font-bold text-purple-800">{selectedIncident.patient_matric_number || ''}</span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 pt-1 border-t border-purple-200/70 text-xs">
+                        <div>
+                          <span className="text-[10px] text-purple-600 block font-semibold">Blood Group</span>
+                          <span className="font-extrabold text-red-700">{selectedIncident.patient_blood_group || 'O+'}</span>
+                        </div>
+                        <div>
+                          <span className="text-[10px] text-purple-600 block font-semibold">Friend Phone</span>
+                          <span className="font-bold text-slate-800">{selectedIncident.patient_phone || 'N/A'}</span>
+                        </div>
+                        {selectedIncident.patient_notes && (
+                          <div className="col-span-2 text-[11px] text-purple-900 bg-white/80 p-2 rounded-lg border border-purple-100">
+                            📝 <strong>Medical Notes:</strong> {selectedIncident.patient_notes}
+                          </div>
+                        )}
+                      </div>
+                      <div className="text-[10px] text-purple-700 pt-1 border-t border-purple-200/60 flex items-center justify-between">
+                        <span>Reported by Peer: <strong>{selectedIncident.student_name}</strong></span>
+                        {selectedIncident.student_phone && (
+                          <a href={`tel:${selectedIncident.student_phone}`} className="text-blue-700 font-bold hover:underline">
+                            Call Buddy: {selectedIncident.student_phone}
+                          </a>
+                        )}
+                      </div>
                     </div>
-                  </div>
+                  ) : (
+                    <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 space-y-1.5">
+                      <div className="text-xs font-bold text-slate-800 flex items-center justify-between">
+                        <span>{selectedIncident.student_name || 'FUHSI Student'}</span>
+                        <span className="text-[10px] font-mono text-slate-500">{selectedIncident.matric_number || ''}</span>
+                      </div>
+                      {selectedIncident.student_phone && (
+                        <a
+                          href={`tel:${selectedIncident.student_phone}`}
+                          className="text-xs text-blue-600 hover:underline flex items-center space-x-1"
+                        >
+                          <PhoneCall className="w-3 h-3" />
+                          <span>Call Student: {selectedIncident.student_phone}</span>
+                        </a>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Vitals Summary from DB (for Direct Student SOS) */}
+                  {!selectedIncident.is_proxy_sos && (
+                    <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-100 space-y-2 text-xs">
+                      <div className="font-bold text-slate-800">Student Health Snapshot (Database)</div>
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        <div>
+                          <span className="text-[10px] text-slate-500 block">Blood Group</span>
+                          <span className="font-bold text-slate-900">{selectedIncident.blood_group || 'Not Set'}</span>
+                        </div>
+                        <div>
+                          <span className="text-[10px] text-slate-500 block">Genotype</span>
+                          <span className="font-bold text-slate-900">{selectedIncident.genotype || 'Not Set'}</span>
+                        </div>
+                        <div className="col-span-2">
+                          <span className="text-[10px] text-slate-500 block">Allergies</span>
+                          <span className="font-bold text-red-600">
+                            {Array.isArray(selectedIncident.allergies) && selectedIncident.allergies.length > 0
+                              ? selectedIncident.allergies.join(', ')
+                              : 'None Reported'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Interactive Emergency Campus Map & Turn-by-Turn Routing */}
                   <div className="space-y-2">

@@ -118,6 +118,13 @@ CREATE TABLE IF NOT EXISTS incidents (
   assigned_responder_id UUID REFERENCES users(id),
   triage_notes TEXT,
   resolved_at TIMESTAMPTZ,
+  is_proxy_sos BOOLEAN NOT NULL DEFAULT FALSE,
+  patient_name TEXT,
+  patient_matric_number TEXT,
+  patient_phone TEXT,
+  patient_blood_group TEXT,
+  patient_allergies TEXT,
+  patient_notes TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
@@ -152,6 +159,19 @@ CREATE TABLE IF NOT EXISTS notifications (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- Student trusted buddies (up to 3 friends to trigger SOS on their behalf)
+CREATE TABLE IF NOT EXISTS trusted_buddies (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  student_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  phone TEXT NOT NULL,
+  matric_number TEXT,
+  blood_group TEXT,
+  allergies TEXT,
+  notes TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 -- Doctor appointment booking requests
 CREATE TABLE IF NOT EXISTS bookings (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -170,4 +190,6 @@ CREATE INDEX IF NOT EXISTS idx_incident_locations_incident ON incident_locations
 CREATE INDEX IF NOT EXISTS idx_incident_logs_incident ON incident_logs(incident_id);
 CREATE INDEX IF NOT EXISTS idx_clinical_entries_student ON clinical_entries(student_id);
 CREATE INDEX IF NOT EXISTS idx_emergency_contacts_student ON emergency_contacts(student_id);
+CREATE INDEX IF NOT EXISTS idx_trusted_buddies_student ON trusted_buddies(student_id);
 CREATE INDEX IF NOT EXISTS idx_bookings_student ON bookings(student_id);
+

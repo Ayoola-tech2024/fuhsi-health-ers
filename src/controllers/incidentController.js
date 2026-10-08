@@ -30,7 +30,19 @@ async function findNearestFacility(latitude, longitude) {
 
 // POST /api/incidents  — the SOS trigger
 const triggerSOS = asyncHandler(async (req, res) => {
-  const { latitude, longitude, description } = req.body;
+  const { 
+    latitude, 
+    longitude, 
+    description,
+    isProxySOS,
+    patientName,
+    patientMatricNumber,
+    patientPhone,
+    patientBloodGroup,
+    patientAllergies,
+    patientNotes,
+  } = req.body;
+
   if (latitude === undefined || longitude === undefined) {
     throw new ApiError(422, 'latitude and longitude are required');
   }
@@ -43,6 +55,13 @@ const triggerSOS = asyncHandler(async (req, res) => {
     longitude,
     description,
     nearestFacilityId: nearest ? nearest.id : null,
+    isProxySOS: Boolean(isProxySOS),
+    patientName,
+    patientMatricNumber,
+    patientPhone,
+    patientBloodGroup,
+    patientAllergies,
+    patientNotes,
   });
 
   // Notify responders/clinicians so someone triages immediately.
@@ -51,10 +70,14 @@ const triggerSOS = asyncHandler(async (req, res) => {
   const recipientIds = [...responders, ...clinicians].map((u) => u.id);
   const student = await userModel.findById(req.user.id);
 
+  const notifyMsg = isProxySOS && patientName
+    ? `🚨 PROXY SOS: ${student.full_name} triggered emergency for friend ${patientName} (${patientMatricNumber || 'Student'}).`
+    : `🚨 SOS from ${student.full_name}: new emergency incident reported.`;
+
   await notificationModel.notifyMany(recipientIds, {
     incidentId: incident.id,
     channel: 'push',
-    message: `SOS from ${student.full_name}: new emergency incident reported.`,
+    message: notifyMsg,
   });
 
   // Notify the student's own trusted contacts. emergency_contacts stores

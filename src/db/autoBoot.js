@@ -16,6 +16,29 @@ async function autoBootDb() {
     }
 
     await pool.query(sql);
+
+    // Apply incremental migrations for Proxy SOS & Trusted Friends
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS trusted_buddies (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        student_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        name TEXT NOT NULL,
+        phone TEXT NOT NULL,
+        matric_number TEXT,
+        blood_group TEXT,
+        allergies TEXT,
+        notes TEXT,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+      );
+      ALTER TABLE incidents ADD COLUMN IF NOT EXISTS is_proxy_sos BOOLEAN NOT NULL DEFAULT FALSE;
+      ALTER TABLE incidents ADD COLUMN IF NOT EXISTS patient_name TEXT;
+      ALTER TABLE incidents ADD COLUMN IF NOT EXISTS patient_matric_number TEXT;
+      ALTER TABLE incidents ADD COLUMN IF NOT EXISTS patient_phone TEXT;
+      ALTER TABLE incidents ADD COLUMN IF NOT EXISTS patient_blood_group TEXT;
+      ALTER TABLE incidents ADD COLUMN IF NOT EXISTS patient_allergies TEXT;
+      ALTER TABLE incidents ADD COLUMN IF NOT EXISTS patient_notes TEXT;
+    `);
+
     console.log('✅ Database schema verified / migrated successfully.');
 
     // Seed/Update Comprehensive Health Facilities

@@ -11,15 +11,45 @@ const VALID_TRANSITIONS = {
   cancelled: [],
 };
 
-async function createIncident({ studentId, latitude, longitude, description, nearestFacilityId }) {
+async function createIncident({
+  studentId,
+  latitude,
+  longitude,
+  description,
+  nearestFacilityId,
+  isProxySOS = false,
+  patientName = null,
+  patientMatricNumber = null,
+  patientPhone = null,
+  patientBloodGroup = null,
+  patientAllergies = null,
+  patientNotes = null,
+}) {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
 
     const { rows } = await client.query(
-      `INSERT INTO incidents (student_id, latitude, longitude, description, nearest_facility_id)
-       VALUES ($1,$2,$3,$4,$5) RETURNING *`,
-      [studentId, latitude, longitude, description || null, nearestFacilityId || null]
+      `INSERT INTO incidents (
+         student_id, latitude, longitude, description, nearest_facility_id,
+         is_proxy_sos, patient_name, patient_matric_number, patient_phone,
+         patient_blood_group, patient_allergies, patient_notes
+       )
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING *`,
+      [
+        studentId,
+        latitude,
+        longitude,
+        description || null,
+        nearestFacilityId || null,
+        Boolean(isProxySOS),
+        patientName || null,
+        patientMatricNumber || null,
+        patientPhone || null,
+        patientBloodGroup || null,
+        patientAllergies || null,
+        patientNotes || null,
+      ]
     );
     const incident = rows[0];
 
@@ -31,7 +61,7 @@ async function createIncident({ studentId, latitude, longitude, description, nea
     await client.query(
       `INSERT INTO incident_logs (incident_id, actor_id, event_type, notes)
        VALUES ($1,$2,'reported',$3)`,
-      [incident.id, studentId, 'SOS triggered']
+      [incident.id, studentId, isProxySOS ? `Proxy SOS triggered for friend: ${patientName}` : 'SOS triggered']
     );
 
     await client.query('COMMIT');
@@ -45,7 +75,25 @@ async function createIncident({ studentId, latitude, longitude, description, nea
 }
 
 async function findById(id) {
-  const { rows } = await pool.query(`SELECT * FROM incidents WHERE id = $1`, [id]);
+  const { rows } = await pool.query(
+    `SELECT i.*, 
+            s.full_name AS student_name, 
+            s.matric_number,
+            s.phone AS student_phone,
+            sp.blood_group,
+            sp.genotype,
+            sp.allergies,
+            sp.chronic_conditions,
+            f.name AS facility_name, 
+            r.full_name AS responder_name
+     FROM incidents i
+     JOIN users s ON s.id = i.student_id
+     LEFT JOIN student_profiles sp ON sp.student_id = s.id
+     LEFT JOIN facilities f ON f.id = i.nearest_facility_id
+     LEFT JOIN users r ON r.id = i.assigned_responder_id
+     WHERE i.id = $1`,
+    [id]
+  );
   return rows[0] || null;
 }
 

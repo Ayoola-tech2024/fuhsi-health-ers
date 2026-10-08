@@ -25,6 +25,8 @@ import {
   ExternalLink
 } from 'lucide-react';
 import EmergencyMap from '../components/EmergencyMap';
+import BuddyManagerModal from '../components/BuddyManagerModal';
+import LegalNoticeModal from '../components/LegalNoticeModal';
 
 export default function SOSPage() {
   const { user, isAuthenticated } = useAuth();
@@ -33,7 +35,14 @@ export default function SOSPage() {
   const [profile, setProfile] = useState(null);
   const [contacts, setContacts] = useState([]);
   const [facilities, setFacilities] = useState([]);
+  const [buddies, setBuddies] = useState([]);
   const [loadingData, setLoadingData] = useState(true);
+
+  // Buddy SOS / Proxy SOS State
+  const [sosTarget, setSosTarget] = useState('self'); // 'self' | 'buddy'
+  const [selectedBuddyId, setSelectedBuddyId] = useState(null);
+  const [showBuddyModal, setShowBuddyModal] = useState(false);
+  const [showLegalModal, setShowLegalModal] = useState(false);
 
   // Emergency SOS State
   const [activeSOS, setActiveSOS] = useState(false);
@@ -105,14 +114,21 @@ export default function SOSPage() {
     async function fetchLiveDbData() {
       try {
         if (isAuthenticated) {
-          const [profRes, contRes] = await Promise.all([
+          const [profRes, contRes, budRes] = await Promise.all([
             api.getProfile().catch(() => ({ profile: null })),
-            api.getContacts().catch(() => ({ contacts: [] }))
+            api.getContacts().catch(() => ({ contacts: [] })),
+            api.getBuddies().catch(() => ({ buddies: [] }))
           ]);
 
           if (isMounted) {
             if (profRes && profRes.profile) setProfile(profRes.profile);
             if (contRes && contRes.contacts) setContacts(contRes.contacts);
+            if (budRes && Array.isArray(budRes.buddies)) {
+              setBuddies(budRes.buddies);
+              if (budRes.buddies.length > 0) {
+                setSelectedBuddyId((prev) => prev || budRes.buddies[0].id);
+              }
+            }
           }
         }
 
@@ -297,15 +313,30 @@ export default function SOSPage() {
     setActiveSOS(true);
     setSosStatus('reported');
 
+    // Build Proxy SOS payload if triggering for a friend
+    const isBuddyMode = sosTarget === 'buddy';
+    const targetBuddy = isBuddyMode ? (buddies.find((b) => b.id === selectedBuddyId) || buddies[0]) : null;
+
     // Ensure freshest high-accuracy GPS coordinates are captured
     acquireGpsPosition(async (freshCoords) => {
       const activeCoords = freshCoords || coordsRef.current || coords;
       try {
-        const res = await api.triggerSOS({
+        const payload = {
           latitude: activeCoords.latitude,
           longitude: activeCoords.longitude,
-          description: `Emergency alert triggered by ${displayName}. Immediate response requested.`,
-        });
+          isProxySOS: Boolean(isBuddyMode && targetBuddy),
+          patientName: targetBuddy ? targetBuddy.name : null,
+          patientMatricNumber: targetBuddy ? targetBuddy.matric_number : null,
+          patientPhone: targetBuddy ? targetBuddy.phone : null,
+          patientBloodGroup: targetBuddy ? targetBuddy.blood_group : null,
+          patientAllergies: targetBuddy ? targetBuddy.allergies : null,
+          patientNotes: targetBuddy ? targetBuddy.notes : null,
+          description: isBuddyMode && targetBuddy
+            ? `🚨 PROXY SOS: Emergency triggered by ${displayName} for friend ${targetBuddy.name} (${targetBuddy.matric_number || 'Student'}). Immediate medical dispatch required.`
+            : `Emergency alert triggered by ${displayName}. Immediate response requested.`,
+        };
+
+        const res = await api.triggerSOS(payload);
         if (res && res.incident) {
           setActiveIncident(res.incident);
           setNearestFacility(res.nearestFacility);
@@ -318,6 +349,12 @@ export default function SOSPage() {
           status: 'reported',
           latitude: activeCoords.latitude,
           longitude: activeCoords.longitude,
+          is_proxy_sos: Boolean(isBuddyMode && targetBuddy),
+          patient_name: targetBuddy ? targetBuddy.name : null,
+          patient_matric_number: targetBuddy ? targetBuddy.matric_number : null,
+          patient_phone: targetBuddy ? targetBuddy.phone : null,
+          patient_blood_group: targetBuddy ? targetBuddy.blood_group : null,
+          patient_notes: targetBuddy ? targetBuddy.notes : null,
         });
 
         let localNearest = facilities[0] || {
@@ -546,6 +583,111 @@ export default function SOSPage() {
           )}
         </div>
 
+        {/* 2.5. Buddy SOS / Emergency Target Switcher (Proxy SOS) */}
+        <div className="bg-white rounded-2xl p-3.5 shadow-sm border border-slate-200 space-y-2.5">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-700 flex items-center space-x-1.5">
+              <Users className="w-3.5 h-3.5 text-purple-600" />
+              <span>SOS Emergency Target</span>
+            </span>
+            <button
+              type="button"
+              onClick={() => setShowBuddyModal(true)}
+              className="text-[11px] font-bold text-purple-700 hover:text-purple-900 bg-purple-50 hover:bg-purple-100 px-2 py-1 rounded-lg border border-purple-200 transition-colors"
+            >
+              + Trusted Friends ({buddies.length}/3)
+            </button>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => setSosTarget('self')}
+              className={`p-2.5 rounded-xl border text-left transition-all flex items-center space-x-2.5 ${
+                sosTarget === 'self'
+                  ? 'bg-red-50 border-red-500 text-red-950 ring-1 ring-red-500 shadow-sm'
+                  : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
+              }`}
+            >
+              <div className={`w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 ${
+                sosTarget === 'self' ? 'bg-red-600 text-white' : 'bg-slate-200 text-slate-700'
+              }`}>
+                {(displayName || 'M').charAt(0)}
+              </div>
+              <div className="truncate">
+                <span className="text-xs font-bold block truncate">For Myself</span>
+                <span className="text-[10px] text-slate-500 truncate block">
+                  {bloodGroup} • {displayName.split(' ')[0]}
+                </span>
+              </div>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                if (buddies.length === 0) {
+                  setShowBuddyModal(true);
+                } else {
+                  setSosTarget('buddy');
+                }
+              }}
+              className={`p-2.5 rounded-xl border text-left transition-all flex items-center space-x-2.5 ${
+                sosTarget === 'buddy'
+                  ? 'bg-purple-50 border-purple-500 text-purple-950 ring-1 ring-purple-500 shadow-sm'
+                  : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
+              }`}
+            >
+              <div className={`w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 ${
+                sosTarget === 'buddy' ? 'bg-purple-600 text-white' : 'bg-slate-200 text-slate-700'
+              }`}>
+                👥
+              </div>
+              <div className="truncate">
+                <span className="text-xs font-bold block truncate">For a Friend</span>
+                <span className="text-[10px] text-slate-500 truncate block">
+                  {buddies.length > 0 ? `${buddies.length} friend${buddies.length > 1 ? 's' : ''} ready` : 'Tap to add friend'}
+                </span>
+              </div>
+            </button>
+          </div>
+
+          {/* If Buddy Mode is active, show friend dropdown selector */}
+          {sosTarget === 'buddy' && buddies.length > 0 && (
+            <div className="bg-purple-50/80 border border-purple-200 rounded-xl p-2.5 space-y-1.5">
+              <div className="flex items-center justify-between text-[11px]">
+                <span className="font-bold text-purple-900">Select Friend in Distress:</span>
+                <span className="text-[10px] text-purple-700 font-medium">Transmits their vitals</span>
+              </div>
+              <div className="flex items-center space-x-1.5 overflow-x-auto py-1">
+                {buddies.map((b) => {
+                  const isCur = (selectedBuddyId || buddies[0].id) === b.id;
+                  return (
+                    <button
+                      key={b.id}
+                      type="button"
+                      onClick={() => setSelectedBuddyId(b.id)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold shrink-0 transition-all flex items-center space-x-1.5 ${
+                        isCur
+                          ? 'bg-purple-600 text-white shadow-sm'
+                          : 'bg-white text-purple-900 border border-purple-200 hover:bg-purple-100'
+                      }`}
+                    >
+                      <span>{b.name}</span>
+                      {b.blood_group && (
+                        <span className={`px-1 py-0.2 rounded text-[9px] font-black ${
+                          isCur ? 'bg-purple-800 text-white' : 'bg-purple-100 text-purple-800'
+                        }`}>
+                          {b.blood_group}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+
         {/* 3. Hero Emergency SOS Banner Card */}
         <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-[#8B0000] via-[#B91C1C] to-[#7F1D1D] text-white p-4 sm:p-5 shadow-lg">
           <div 
@@ -634,6 +776,29 @@ export default function SOSPage() {
                 <p className="text-[11px] text-slate-600 bg-slate-50 rounded-lg p-2 border border-slate-100 font-medium">
                   {statusInfo.unitSub}
                 </p>
+
+                {/* Proxy SOS Alert Details */}
+                {(activeIncident?.is_proxy_sos || activeIncident?.patient_name) && (
+                  <div className="bg-purple-50 border border-purple-200 rounded-xl p-2.5 space-y-1">
+                    <div className="flex items-center space-x-1.5 text-purple-900 font-extrabold text-xs">
+                      <span className="w-2 h-2 rounded-full bg-purple-600 animate-ping" />
+                      <span>Proxy SOS Dispatched for Friend: {activeIncident.patient_name}</span>
+                    </div>
+                    <div className="text-[11px] text-purple-800 flex flex-wrap gap-x-3 gap-y-0.5 font-medium">
+                      <span>Matric: <strong>{activeIncident.patient_matric_number || 'Student'}</strong></span>
+                      <span>Blood Group: <strong>{activeIncident.patient_blood_group || 'O+'}</strong></span>
+                      {activeIncident.patient_phone && <span>Phone: {activeIncident.patient_phone}</span>}
+                    </div>
+                    {activeIncident.patient_notes && (
+                      <div className="text-[10px] text-purple-700 bg-white/80 p-1.5 rounded-lg border border-purple-100 mt-1">
+                        📝 Medical Notes: {activeIncident.patient_notes}
+                      </div>
+                    )}
+                    <div className="text-[10px] text-purple-600 font-semibold pt-1 border-t border-purple-200/60">
+                      ℹ️ Your phone is transmitting live GPS telemetry for first-aiders to locate you and your friend.
+                    </div>
+                  </div>
+                )}
 
                 {/* Embedded Live Interactive Emergency & Campus Routing Map */}
                 <EmergencyMap
@@ -862,6 +1027,21 @@ export default function SOSPage() {
               </div>
             </div>
           </div>
+        </div>
+
+        {/* 6. Institutional Copyright & IP Notice Footer */}
+        <div className="pt-6 pb-2 text-center space-y-2 border-t border-slate-200/60 mt-4">
+          <button
+            type="button"
+            onClick={() => setShowLegalModal(true)}
+            className="inline-flex items-center space-x-1.5 text-[11px] font-bold text-slate-600 hover:text-slate-900 bg-white px-3 py-1.5 rounded-full border border-slate-200 shadow-sm transition-colors"
+          >
+            <span>⚖️ Legal, IP & Privacy Policy</span>
+          </button>
+          <p className="text-[10px] text-slate-600 font-medium leading-tight">
+            © 2026 Federal University of Health Sciences, Ila-Orangun (FUHSI).<br />
+            Protected Proprietary Intellectual Property. All Rights Reserved.
+          </p>
         </div>
       </div>
 
@@ -1140,6 +1320,29 @@ export default function SOSPage() {
           </div>
         </div>
       )}
+
+      {/* Modal 6: Buddy SOS (Trusted Friends Manager) */}
+      <BuddyManagerModal
+        isOpen={showBuddyModal}
+        onClose={() => setShowBuddyModal(false)}
+        buddies={buddies}
+        onBuddyUpdated={() => {
+          api.getBuddies().then((res) => {
+            if (res && Array.isArray(res.buddies)) {
+              setBuddies(res.buddies);
+              if (res.buddies.length > 0) {
+                setSelectedBuddyId((prev) => prev || res.buddies[0].id);
+              }
+            }
+          }).catch(() => {});
+        }}
+      />
+
+      {/* Modal 7: Legal, IP & Privacy Policy */}
+      <LegalNoticeModal
+        isOpen={showLegalModal}
+        onClose={() => setShowLegalModal(false)}
+      />
     </div>
   );
 }

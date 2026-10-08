@@ -217,34 +217,58 @@ export default function ClinicianPortalPage() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {inboundIncidents.map((inc) => (
-                <div key={inc.id} className="p-3.5 bg-red-50/80 border border-red-200 rounded-xl flex flex-col justify-between space-y-2">
+                <div key={inc.id} className={`p-3.5 border rounded-xl flex flex-col justify-between space-y-2 ${
+                  inc.is_proxy_sos ? 'bg-purple-50/80 border-purple-200' : 'bg-red-50/80 border-red-200'
+                }`}>
                   <div className="flex items-start justify-between">
                     <div>
                       <div className="flex items-center space-x-1.5">
-                        <span className="w-2 h-2 rounded-full bg-red-600 animate-pulse" />
-                        <h3 className="font-bold text-sm text-slate-900">{inc.student_name}</h3>
+                        <span className={`w-2 h-2 rounded-full animate-pulse ${inc.is_proxy_sos ? 'bg-purple-600' : 'bg-red-600'}`} />
+                        <h3 className="font-bold text-sm text-slate-900">
+                          {inc.is_proxy_sos && inc.patient_name ? inc.patient_name : inc.student_name}
+                        </h3>
+                        {inc.is_proxy_sos && (
+                          <span className="px-1.5 py-0.2 bg-purple-200 text-purple-900 rounded text-[9px] font-extrabold">
+                            Proxy Friend SOS
+                          </span>
+                        )}
                       </div>
                       <p className="text-xs text-slate-600 mt-0.5">
-                        Matric: <span className="font-mono font-semibold">{inc.matric_number || 'N/A'}</span>
+                        Matric: <span className="font-mono font-semibold">
+                          {inc.is_proxy_sos && inc.patient_matric_number ? inc.patient_matric_number : (inc.matric_number || 'N/A')}
+                        </span>
+                        {inc.is_proxy_sos && (
+                          <span className="text-[10px] text-purple-700 block mt-0.5">
+                            Reported by Buddy: <strong>{inc.student_name}</strong>
+                          </span>
+                        )}
                       </p>
                     </div>
-                    <span className="px-2 py-0.5 bg-red-600 text-white rounded text-[10px] font-extrabold uppercase">
+                    <span className={`px-2 py-0.5 text-white rounded text-[10px] font-extrabold uppercase ${
+                      inc.is_proxy_sos ? 'bg-purple-600' : 'bg-red-600'
+                    }`}>
                       {inc.status}
                     </span>
                   </div>
 
-                  <div className="grid grid-cols-3 gap-1.5 py-1 text-center bg-white/80 rounded-lg p-1.5 border border-red-100 text-[10px]">
+                  <div className="grid grid-cols-3 gap-1.5 py-1 text-center bg-white/80 rounded-lg p-1.5 border border-slate-200 text-[10px]">
                     <div>
                       <span className="text-slate-400 block">Blood Group</span>
-                      <strong className="text-red-700 font-black">{inc.blood_group || 'Not Set'}</strong>
+                      <strong className="text-red-700 font-black">
+                        {inc.is_proxy_sos ? (inc.patient_blood_group || 'O+') : (inc.blood_group || 'Not Set')}
+                      </strong>
                     </div>
                     <div>
-                      <span className="text-slate-400 block">Genotype</span>
-                      <strong className="text-slate-900 font-bold">{inc.genotype || 'Not Set'}</strong>
+                      <span className="text-slate-400 block">{inc.is_proxy_sos ? 'Friend Phone' : 'Genotype'}</span>
+                      <strong className="text-slate-900 font-bold truncate block">
+                        {inc.is_proxy_sos ? (inc.patient_phone || 'N/A') : (inc.genotype || 'Not Set')}
+                      </strong>
                     </div>
                     <div>
-                      <span className="text-slate-400 block">Allergies</span>
-                      <strong className="text-slate-900 font-bold truncate block">{Array.isArray(inc.allergies) ? inc.allergies.join(', ') : 'None'}</strong>
+                      <span className="text-slate-400 block">Allergies / Notes</span>
+                      <strong className="text-slate-900 font-bold truncate block" title={inc.is_proxy_sos ? (inc.patient_notes || 'None') : (Array.isArray(inc.allergies) ? inc.allergies.join(', ') : 'None')}>
+                        {inc.is_proxy_sos ? (inc.patient_notes || 'None Reported') : (Array.isArray(inc.allergies) ? inc.allergies.join(', ') : 'None')}
+                      </strong>
                     </div>
                   </div>
 
