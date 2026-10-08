@@ -58,7 +58,7 @@ export const api = {
   deleteContact: (id) => request(`/contacts/${id}`, { method: 'DELETE' }),
 
   // Facilities
-  getFacilities: () => request('/facilities'),
+  getFacilities: (coords) => request(`/facilities${coords?.latitude && coords?.longitude ? `?lat=${coords.latitude}&lng=${coords.longitude}` : ''}`),
   getNearestFacility: (lat, lng) => request(`/facilities/nearest?lat=${lat}&lng=${lng}`),
 
   // Incidents / SOS lifecycle

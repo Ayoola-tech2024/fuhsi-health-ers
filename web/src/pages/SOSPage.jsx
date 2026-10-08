@@ -319,11 +319,33 @@ export default function SOSPage() {
           latitude: activeCoords.latitude,
           longitude: activeCoords.longitude,
         });
-        setNearestFacility({
+
+        let localNearest = facilities[0] || {
           name: 'FUHSI Health & Medical Centre',
+          latitude: 8.0194,
+          longitude: 4.9042,
           distanceKm: 0.4,
           phone: '+234 800 384 7437',
-        });
+        };
+        if (facilities.length > 0) {
+          let minD = Infinity;
+          for (const f of facilities) {
+            const dLat = ((Number(f.latitude) - activeCoords.latitude) * Math.PI) / 180;
+            const dLon = ((Number(f.longitude) - activeCoords.longitude) * Math.PI) / 180;
+            const a =
+              Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+              Math.cos((activeCoords.latitude * Math.PI) / 180) *
+                Math.cos((Number(f.latitude) * Math.PI) / 180) *
+                Math.sin(dLon / 2) *
+                Math.sin(dLon / 2);
+            const dist = 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            if (dist < minD) {
+              minD = dist;
+              localNearest = { ...f, distanceKm: Number(dist.toFixed(2)) };
+            }
+          }
+        }
+        setNearestFacility(localNearest);
       }
     });
   };

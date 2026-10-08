@@ -6,6 +6,7 @@ const router = express.Router();
 
 // Publicly visible so students, visitors, and responders can locate health facilities immediately
 router.get('/', facilityController.list);
+router.get('/nearest', facilityController.getNearest);
 
 // Admin-only facility creation
 router.post('/', requireAuth, requireRole('admin'), facilityController.create);

@@ -8,14 +8,22 @@ async function seed() {
   try {
     const passwordHash = await bcrypt.hash('password123', 10);
 
-    // 1. Insert Campus Facilities
-    console.log('Inserting campus health facilities...');
+    // 1. Insert Campus and Regional Facilities
+    console.log('Inserting campus and regional health facilities...');
     await db.query(`
       INSERT INTO facilities (name, facility_type, latitude, longitude, address, phone, is_active)
       VALUES 
         ('FUHSI Health & Medical Centre', 'Main Clinic / Emergency Ward', 8.0194, 4.9042, 'Main Campus Gate 1, Ila-Orangun', '+234 800 384 7437', true),
         ('Campus Dispensary Unit 1', 'Dispensary / Outpatient Triage', 8.0182, 4.9031, 'Hostel Complex B, Ila-Orangun', '+234 802 111 2233', true),
-        ('Ila-Orangun General Hospital', 'Tertiary Trauma Referral', 8.0150, 4.8980, 'Ila-Orangun Town Bypass', '+234 803 999 8877', true)
+        ('Ila-Orangun General Hospital', 'Tertiary Trauma Referral', 8.0150, 4.8980, 'Ila-Orangun Town Bypass', '+234 803 999 8877', true),
+        ('Ekiti State University Teaching Hospital (EKSUTH)', 'State Teaching Hospital / Trauma Centre', 7.6401, 5.2345, 'Teaching Hospital Road, Ado-Ekiti', '+234 803 400 1122', true),
+        ('Federal Teaching Hospital (FTHI) - Ado Referral Centre', 'Federal Tertiary Referral', 7.6180, 5.2210, 'Adebayo Area, Ado-Ekiti', '+234 803 555 8899', true),
+        ('State Specialist Hospital Ado-Ekiti', 'Emergency Specialist Hospital', 7.6255, 5.2155, 'Hospital Road, Ado-Ekiti', '+234 802 333 4455', true),
+        ('Afe Babalola University Multi-System Hospital (ABUAD)', 'Multi-System Tertiary Care', 7.5992, 5.3021, 'ABUAD Campus, Ado-Ekiti', '+234 808 777 6655', true),
+        ('UNIOSUN Teaching Hospital (UTH)', 'State University Teaching Hospital', 7.7827, 4.5418, 'Idi-Seke, Osogbo', '+234 803 111 9900', true),
+        ('State Hospital Asubiaro, Osogbo', 'General Hospital / Trauma Ward', 7.7690, 4.5620, 'Asubiaro, Osogbo', '+234 805 222 3344', true),
+        ('Federal Medical Centre Annex Offa', 'Federal Medical Centre', 8.1492, 4.7198, 'Offa-Ila Road, Offa', '+234 803 666 7788', true),
+        ('General Hospital Ikole-Ekiti', 'District General Hospital', 7.7981, 5.5122, 'Ikole-Oye Expressway, Ikole', '+234 802 888 9911', true)
       ON CONFLICT DO NOTHING;
     `);
 
