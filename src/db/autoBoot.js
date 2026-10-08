@@ -32,6 +32,8 @@ async function autoBootDb() {
         created_at TIMESTAMPTZ NOT NULL DEFAULT now()
       );
       ALTER TABLE trusted_buddies ADD COLUMN IF NOT EXISTS buddy_user_id UUID REFERENCES users(id) ON DELETE CASCADE;
+      ALTER TABLE trusted_buddies ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'accepted';
+      ALTER TABLE trusted_buddies ADD COLUMN IF NOT EXISTS requested_by UUID REFERENCES users(id) ON DELETE CASCADE;
       ALTER TABLE incidents ADD COLUMN IF NOT EXISTS is_proxy_sos BOOLEAN NOT NULL DEFAULT FALSE;
       ALTER TABLE incidents ADD COLUMN IF NOT EXISTS patient_name TEXT;
       ALTER TABLE incidents ADD COLUMN IF NOT EXISTS patient_matric_number TEXT;

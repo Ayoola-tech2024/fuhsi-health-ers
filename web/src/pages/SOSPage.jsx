@@ -154,8 +154,10 @@ export default function SOSPage() {
     phone: '+234 800 384 7437'
   };
 
-  // Selected Buddy
-  const selectedBuddy = buddies.find((b) => b.id === selectedBuddyId) || buddies[0] || null;
+  // Authorized buddies (mutual permission confirmed)
+  const authorizedBuddies = buddies.filter((b) => b.status === 'accepted');
+  const pendingBuddies = buddies.filter((b) => b.status === 'pending');
+  const selectedBuddy = authorizedBuddies.find((b) => b.id === selectedBuddyId) || authorizedBuddies[0] || null;
 
   // Countdown timer for SOS trigger
   useEffect(() => {
@@ -330,7 +332,7 @@ export default function SOSPage() {
             <button
               type="button"
               onClick={() => {
-                if (buddies.length === 0) {
+                if (authorizedBuddies.length === 0) {
                   setShowBuddyModal(true);
                 } else {
                   setSosTarget('buddy');
@@ -343,15 +345,15 @@ export default function SOSPage() {
               }`}
             >
               <Users className="w-3.5 h-3.5" />
-              <span>For a Friend</span>
+              <span>For a Friend {authorizedBuddies.length > 0 ? `(${authorizedBuddies.length})` : ''}</span>
             </button>
           </div>
 
           {/* If Buddy Mode active, show selected friend chip */}
-          {sosTarget === 'buddy' && buddies.length > 0 && (
+          {sosTarget === 'buddy' && authorizedBuddies.length > 0 && (
             <div className="pt-1.5 flex flex-wrap gap-1.5 border-t border-slate-100">
-              {buddies.map((b) => {
-                const isSelected = (selectedBuddyId || buddies[0].id) === b.id;
+              {authorizedBuddies.map((b) => {
+                const isSelected = (selectedBuddyId || authorizedBuddies[0].id) === b.id;
                 return (
                   <button
                     key={b.id}
@@ -365,11 +367,25 @@ export default function SOSPage() {
                   >
                     <span>👤 {b.name.split(' ')[0]}</span>
                     <span className="px-1.5 py-0.5 bg-purple-200/80 text-purple-900 rounded text-[9px] font-mono font-bold">
-                      {b.matric_number ? b.matric_number.split('/').pop() : 'Linked'}
+                      {b.matric_number ? b.matric_number.split('/').pop() : 'Authorized'}
                     </span>
                   </button>
                 );
               })}
+            </div>
+          )}
+
+          {/* If pending buddies exist but none authorized yet */}
+          {pendingBuddies.length > 0 && authorizedBuddies.length === 0 && (
+            <div className="pt-1 text-[11px] text-amber-700 flex items-center justify-between">
+              <span>⏳ {pendingBuddies.length} request awaiting friend approval</span>
+              <button
+                type="button"
+                onClick={() => setShowBuddyModal(true)}
+                className="font-bold underline text-amber-900 hover:text-amber-950"
+              >
+                View
+              </button>
             </div>
           )}
         </div>

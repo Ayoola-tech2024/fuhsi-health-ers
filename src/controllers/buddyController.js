@@ -6,6 +6,11 @@ const list = asyncHandler(async (req, res) => {
   res.json({ buddies });
 });
 
+const listIncoming = asyncHandler(async (req, res) => {
+  const incoming = await buddyModel.listIncomingRequests(req.user.id);
+  res.json({ incoming });
+});
+
 const lookup = asyncHandler(async (req, res) => {
   const query = req.query.query || req.query.identifier;
   if (!query || !query.trim()) {
@@ -25,7 +30,7 @@ const lookup = asyncHandler(async (req, res) => {
   const existingList = await buddyModel.listForStudent(req.user.id);
   const alreadyAdded = existingList.some(b => b.buddy_user_id === found.id || (b.matric_number && b.matric_number.toLowerCase() === (found.matric_number || '').toLowerCase()));
   if (alreadyAdded) {
-    throw new ApiError(400, `${found.full_name} is already linked in your Trusted Friends list.`);
+    throw new ApiError(400, `${found.full_name} is already in your Trusted Friends list.`);
   }
 
   res.json({
@@ -62,13 +67,34 @@ const create = asyncHandler(async (req, res) => {
     throw new ApiError(400, 'You cannot link your own account as an emergency buddy.');
   }
 
-  const buddy = await buddyModel.createLinkedBuddy({
+  const buddy = await buddyModel.createBuddyRequest({
     studentId: req.user.id,
     buddyUserId: targetId,
     notes: notes || null
   });
 
-  res.status(201).json({ buddy });
+  res.status(201).json({
+    message: 'Buddy link request sent successfully. Awaiting approval from your friend.',
+    buddy
+  });
+});
+
+const respond = asyncHandler(async (req, res) => {
+  const { action } = req.body; // 'accept' | 'decline'
+  if (!action || !['accept', 'decline'].includes(action)) {
+    throw new ApiError(400, 'Action must be "accept" or "decline".');
+  }
+
+  const result = await buddyModel.respondToRequest({
+    requestId: req.params.id,
+    studentId: req.user.id,
+    action
+  });
+
+  res.json({
+    message: action === 'accept' ? 'Emergency buddy request approved.' : 'Emergency buddy request declined.',
+    result
+  });
 });
 
 const remove = asyncHandler(async (req, res) => {
@@ -79,4 +105,4 @@ const remove = asyncHandler(async (req, res) => {
   res.json({ message: 'Trusted friend removed successfully', buddy });
 });
 
-module.exports = { list, lookup, create, remove };
+module.exports = { list, listIncoming, lookup, create, respond, remove };
