@@ -44,6 +44,7 @@ export default function SOSPage() {
   const [profile, setProfile] = useState(null);
   const [contacts, setContacts] = useState([]);
   const [buddies, setBuddies] = useState([]);
+  const [incomingRequests, setIncomingRequests] = useState([]);
 
   // Modals
   const [showBuddyModal, setShowBuddyModal] = useState(false);
@@ -85,37 +86,48 @@ export default function SOSPage() {
     if (typeof callback === 'function') callback(coordsRef.current);
   };
 
-  // Fetch Live Data on Mount
-  useEffect(() => {
-    let isMounted = true;
-    async function fetchLiveDbData() {
-      try {
-        if (isAuthenticated) {
-          const [profRes, contRes, budRes] = await Promise.all([
-            api.getProfile().catch(() => ({ profile: null })),
-            api.getContacts().catch(() => ({ contacts: [] })),
-            api.getBuddies().catch(() => ({ buddies: [] }))
-          ]);
+  // Re-fetch function accessible across components
+  const fetchLiveDbData = async () => {
+    try {
+      if (isAuthenticated) {
+        const [profRes, contRes, budRes, incRes] = await Promise.all([
+          api.getProfile().catch(() => ({ profile: null })),
+          api.getContacts().catch(() => ({ contacts: [] })),
+          api.getBuddies().catch(() => ({ buddies: [] })),
+          api.getIncomingBuddies().catch(() => ({ incoming: [] }))
+        ]);
 
-          if (isMounted) {
-            if (profRes && profRes.profile) setProfile(profRes.profile);
-            if (contRes && contRes.contacts) setContacts(contRes.contacts);
-            if (budRes && Array.isArray(budRes.buddies)) {
-              setBuddies(budRes.buddies);
-              if (budRes.buddies.length > 0) {
-                setSelectedBuddyId((prev) => prev || budRes.buddies[0].id);
-              }
-            }
+        if (profRes && profRes.profile) setProfile(profRes.profile);
+        if (contRes && contRes.contacts) setContacts(contRes.contacts);
+        if (budRes && Array.isArray(budRes.buddies)) {
+          setBuddies(budRes.buddies);
+          const accepted = budRes.buddies.filter(b => b.status === 'accepted');
+          if (accepted.length > 0) {
+            setSelectedBuddyId((prev) => prev || accepted[0].id);
           }
         }
-      } catch (err) {
-        console.warn('Live data fetch notice:', err.message);
+        if (incRes && Array.isArray(incRes.incoming)) {
+          setIncomingRequests(incRes.incoming);
+        }
       }
+    } catch (err) {
+      console.warn('Live data fetch notice:', err.message);
     }
+  };
 
+  // Fetch Live Data on Mount
+  useEffect(() => {
     fetchLiveDbData();
-    return () => { isMounted = false; };
   }, [isAuthenticated, user]);
+
+  const handleHomeRespond = async (requestId, action) => {
+    try {
+      await api.respondBuddyRequest(requestId, action);
+      fetchLiveDbData();
+    } catch (err) {
+      console.warn('Failed to respond to buddy request:', err.message);
+    }
+  };
 
   // Continuous live GPS tracking stream during active emergency
   useEffect(() => {
@@ -303,6 +315,63 @@ export default function SOSPage() {
           </div>
         </div>
 
+        {/* Inbound Buddy Requests Requiring Approval */}
+        {incomingRequests.length > 0 && (
+          <div className="bg-amber-500/10 border-2 border-amber-500/30 rounded-3xl p-4 shadow-sm space-y-3 animate-in fade-in">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2 text-amber-900 font-extrabold text-xs">
+                <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-ping shrink-0" />
+                <span>Emergency Buddy Request ({incomingRequests.length})</span>
+              </div>
+              <span className="text-[10px] font-bold bg-amber-200 text-amber-900 px-2 py-0.5 rounded-full">
+                Action Required
+              </span>
+            </div>
+
+            {incomingRequests.map((req) => (
+              <div key={req.id} className="bg-white p-3.5 rounded-2xl border border-amber-200 shadow-sm space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="font-bold text-xs text-slate-900 flex items-center space-x-1.5">
+                      <span>{req.requester_name}</span>
+                      <span className="text-[10px] bg-emerald-100 text-emerald-800 font-mono px-1.5 py-0.2 rounded font-semibold">
+                        {req.requester_matric || req.requester_email}
+                      </span>
+                    </div>
+                    {req.requester_department && (
+                      <p className="text-[10px] text-slate-500 mt-0.5">{req.requester_department}</p>
+                    )}
+                  </div>
+                </div>
+
+                <p className="text-[11px] text-slate-600 bg-slate-50 p-2 rounded-xl border border-slate-100 leading-snug">
+                  Wants permission to link accounts so they can trigger emergency SOS for you if your phone is offline or out of battery.
+                </p>
+
+                <div className="flex items-center space-x-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => handleHomeRespond(req.id, 'accept')}
+                    className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center justify-center space-x-1 shadow-sm transition-transform active:scale-95 cursor-pointer"
+                  >
+                    <Check className="w-3.5 h-3.5" />
+                    <span>✓ Approve & Link</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleHomeRespond(req.id, 'decline')}
+                    className="px-3.5 py-2 bg-slate-100 hover:bg-red-50 text-slate-700 hover:text-red-700 border border-slate-200 rounded-xl text-xs font-bold flex items-center space-x-1 transition-colors cursor-pointer"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                    <span>Decline</span>
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
         {/* 3. Emergency SOS Target Switcher (Myself vs Friend) */}
         <div className="bg-white rounded-2xl p-3 shadow-sm border border-slate-200 space-y-2.5">
           <div className="flex items-center justify-between px-1">
@@ -310,9 +379,12 @@ export default function SOSPage() {
             <button
               type="button"
               onClick={() => setShowBuddyModal(true)}
-              className="text-[11px] font-bold text-purple-700 hover:text-purple-900 bg-purple-50 hover:bg-purple-100 px-2.5 py-0.5 rounded-lg border border-purple-200 transition-colors"
+              className="text-[11px] font-bold text-purple-700 hover:text-purple-900 bg-purple-50 hover:bg-purple-100 px-2.5 py-0.5 rounded-lg border border-purple-200 transition-colors flex items-center space-x-1"
             >
-              + Trusted Friends ({buddies.length}/3)
+              <span>+ Trusted Friends ({authorizedBuddies.length}/3)</span>
+              {incomingRequests.length > 0 && (
+                <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping" />
+              )}
             </button>
           </div>
 
