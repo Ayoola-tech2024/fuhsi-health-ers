@@ -247,78 +247,95 @@ export default function SOSPage() {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] text-slate-900 pb-28">
-      {/* 1. Header Section */}
-      <div className="bg-[#0D2040] text-white pt-5 pb-20 px-4 rounded-b-[2rem] shadow-md relative overflow-hidden">
-        <div 
-          className="absolute inset-0 opacity-10 bg-cover bg-center pointer-events-none"
-          style={{ backgroundImage: "url('https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=800&auto=format&fit=crop&q=80')" }}
-        />
-
-        <div className="max-w-md mx-auto relative z-10">
-          <div className="flex items-center justify-between">
-            {/* University Crest & Title */}
-            <div className="flex items-center space-x-2.5">
-              <div className="w-10 h-10 rounded-xl bg-white/10 border border-white/20 p-2 flex items-center justify-center backdrop-blur-md">
-                <svg viewBox="0 0 24 24" className="w-full h-full text-white fill-none stroke-current stroke-2">
-                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-                  <path d="M12 8v8" />
-                  <path d="M9 11h6" />
-                </svg>
-              </div>
-              <div>
-                <h1 className="font-black text-sm tracking-tight text-white leading-tight">FUHSI ERS</h1>
-                <p className="text-[10px] text-slate-300 font-medium">Emergency Response System</p>
-              </div>
+      {/* 1. Sleek Navigation Header */}
+      <div className="bg-[#0D2040] text-white pt-4 pb-6 px-4 shadow-md border-b border-white/10">
+        <div className="max-w-md mx-auto flex items-center justify-between">
+          {/* University Brand */}
+          <div className="flex items-center space-x-2.5">
+            <div className="w-9 h-9 rounded-xl bg-white/10 border border-white/20 p-1.5 flex items-center justify-center backdrop-blur-md">
+              <svg viewBox="0 0 24 24" className="w-full h-full text-white fill-none stroke-current stroke-2">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                <path d="M12 8v8" />
+                <path d="M9 11h6" />
+              </svg>
             </div>
-
-            {/* Location Chip Button */}
-            <button
-              type="button"
-              onClick={() => setShowCityPicker(true)}
-              className="flex items-center space-x-1.5 px-3 py-1.5 bg-white/10 hover:bg-white/20 border border-white/20 rounded-full text-xs font-bold text-white transition-all active:scale-95 cursor-pointer backdrop-blur-md"
-              title="Tap to change active campus or city"
-            >
-              <MapPin className="w-3.5 h-3.5 text-red-400" />
-              <span className="truncate max-w-[130px] sm:max-w-[170px]">{locationName.split(',')[0]}</span>
-              <span className="text-[10px] opacity-70">▾</span>
-            </button>
+            <div>
+              <h1 className="font-black text-sm tracking-tight text-white leading-tight flex items-center space-x-1.5">
+                <span>FUHSI ERS</span>
+                <span className="text-[9px] font-extrabold bg-red-600 text-white px-1.5 py-0.2 rounded">LIVE</span>
+              </h1>
+              <p className="text-[10px] text-slate-300 font-medium">Emergency Response System</p>
+            </div>
           </div>
+
+          {/* Location Chip Button */}
+          <button
+            type="button"
+            onClick={() => setShowCityPicker(true)}
+            className="flex items-center space-x-1.5 px-3 py-1.5 bg-white/10 hover:bg-white/20 border border-white/20 rounded-full text-xs font-bold text-white transition-all active:scale-95 cursor-pointer backdrop-blur-md"
+            title="Tap to change active campus or city"
+          >
+            <MapPin className="w-3.5 h-3.5 text-red-400" />
+            <span className="truncate max-w-[120px] sm:max-w-[160px]">{locationName.split(',')[0]}</span>
+            <span className="text-[10px] opacity-70">▾</span>
+          </button>
         </div>
       </div>
 
       {/* 2. Main Content Body */}
-      <div className="max-w-md mx-auto px-4 -mt-12 space-y-4">
-        {/* Status & Profile Pill Card */}
-        <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-200 flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-extrabold text-sm shrink-0">
-              {displayName.charAt(0).toUpperCase()}
-            </div>
-            <div>
-              <div className="flex items-center space-x-1.5">
-                <span className="text-xs font-bold text-slate-900 truncate max-w-[150px]">{displayName}</span>
-                <span className="px-1.5 py-0.5 bg-red-50 text-red-700 border border-red-200 text-[10px] font-mono font-bold rounded">
-                  {bloodGroup}
-                </span>
+      <div className="max-w-md mx-auto px-4 pt-4 space-y-4">
+        {/* Student Immediate Profile & Medical Vitals Card */}
+        <div className="bg-white rounded-3xl p-4 shadow-sm border border-slate-200 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="w-11 h-11 rounded-2xl bg-blue-50 border border-blue-100 text-blue-700 flex items-center justify-center font-black text-base shrink-0 shadow-sm">
+                {displayName.charAt(0).toUpperCase()}
               </div>
-              <p className="text-[10px] text-slate-500 font-medium">
-                {user?.matric_number || user?.staff_id || 'Campus Member'} • {genotype}
-              </p>
+              <div>
+                <div className="flex items-center space-x-1.5">
+                  <span className="text-sm font-bold text-slate-900 leading-snug">{displayName}</span>
+                  {isAuthenticated && (
+                    <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" title="Verified Account" />
+                  )}
+                </div>
+                <p className="text-[11px] text-slate-500 font-medium">
+                  {user?.matric_number ? `Matric: ${user.matric_number}` : user?.staff_id ? `Staff ID: ${user.staff_id}` : (user?.role ? user.role.toUpperCase() : 'Guest Visitor')}
+                </p>
+              </div>
+            </div>
+
+            {/* Status Pill */}
+            <div>
+              {activeSOS ? (
+                <span className="inline-flex items-center space-x-1 px-2.5 py-1 bg-red-50 border border-red-300 text-red-700 text-[10px] font-black rounded-full animate-pulse">
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-600 animate-ping" />
+                  <span>SOS ACTIVE</span>
+                </span>
+              ) : (
+                <span className="inline-flex items-center space-x-1 px-2.5 py-1 bg-emerald-50 border border-emerald-200 text-emerald-700 text-[10px] font-bold rounded-full">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>Ready</span>
+                </span>
+              )}
             </div>
           </div>
 
-          <div className="text-right">
-            {activeSOS ? (
-              <span className="inline-flex items-center space-x-1 px-2.5 py-1 bg-red-50 border border-red-300 text-red-700 text-[10px] font-black rounded-full animate-pulse">
-                <span className="w-1.5 h-1.5 rounded-full bg-red-600 animate-ping" />
-                <span>SOS ACTIVE</span>
+          {/* Clinical Vitals Strip */}
+          <div className="pt-2 border-t border-slate-100 grid grid-cols-3 gap-2 text-center">
+            <div className="bg-red-50/70 p-2 rounded-xl border border-red-100">
+              <span className="text-[9px] font-bold uppercase tracking-wider text-red-600 block">Blood Group</span>
+              <span className="text-xs font-black text-red-950 block">{bloodGroup}</span>
+            </div>
+            <div className="bg-blue-50/70 p-2 rounded-xl border border-blue-100">
+              <span className="text-[9px] font-bold uppercase tracking-wider text-blue-600 block">Genotype</span>
+              <span className="text-xs font-black text-blue-950 block">{genotype}</span>
+            </div>
+            <div className="bg-amber-50/70 p-2 rounded-xl border border-amber-100">
+              <span className="text-[9px] font-bold uppercase tracking-wider text-amber-700 block">Allergies</span>
+              <span className="text-[11px] font-bold text-amber-950 truncate block">
+                {profile?.allergies && profile.allergies.length > 0 ? profile.allergies.join(', ') : 'None'}
               </span>
-            ) : (
-              <span className="inline-flex items-center space-x-1 px-2.5 py-1 bg-emerald-50 border border-emerald-200 text-emerald-700 text-[10px] font-bold rounded-full">
-                <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                <span>Ready</span>
-              </span>
-            )}
+            </div>
           </div>
         </div>
 

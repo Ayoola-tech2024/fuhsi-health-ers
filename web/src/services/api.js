@@ -27,7 +27,18 @@ async function request(endpoint, options = {}) {
   const data = await response.json().catch(() => ({}));
 
   if (!response.ok) {
-    const error = new Error(data.message || data.error || 'Request failed');
+    let errorMsg = 'Request failed';
+    if (typeof data.error === 'string') {
+      errorMsg = data.error;
+    } else if (data.error && typeof data.error.message === 'string') {
+      errorMsg = data.error.message;
+    } else if (typeof data.message === 'string') {
+      errorMsg = data.message;
+    } else if (Array.isArray(data.errors)) {
+      errorMsg = data.errors.map((e) => e.msg || e.message).join(', ');
+    }
+
+    const error = new Error(errorMsg);
     error.status = response.status;
     error.data = data;
     throw error;
