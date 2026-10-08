@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback } from 'react';
-import { useLocation, REGIONAL_HUBS } from '../context/LocationContext';
+import { useLocation } from '../context/LocationContext';
 import { 
   Building2, 
   Phone, 
@@ -7,8 +7,6 @@ import {
   Clock, 
   Navigation, 
   Loader2, 
-  Crosshair, 
-  Compass, 
   ShieldCheck, 
   Activity, 
   Search, 
@@ -16,6 +14,7 @@ import {
   Globe
 } from 'lucide-react';
 import EmergencyMap from '../components/EmergencyMap';
+import CityPickerModal from '../components/CityPickerModal';
 
 function getGeodesicDistanceKm(lat1, lon1, lat2, lon2) {
   if (lat1 == null || lon1 == null || lat2 == null || lon2 == null) return 0;
@@ -38,7 +37,6 @@ export default function FacilitiesPage() {
     locationSource, 
     isLocating, 
     refreshLocation,
-    setManualCity,
     facilities,
     setFacilities,
     facilitiesLoading 
@@ -47,6 +45,7 @@ export default function FacilitiesPage() {
   const [filterType, setFilterType] = useState('all'); // all, nearby, hospital
   const [searchQuery, setSearchQuery] = useState('');
   const [discoveringNearby, setDiscoveringNearby] = useState(false);
+  const [showCityPicker, setShowCityPicker] = useState(false);
 
   // 1. Compute Live Geodesic Distance and Proximity Ranking instantly from Global Location
   const rankedFacilities = useMemo(() => {
@@ -140,63 +139,51 @@ export default function FacilitiesPage() {
   return (
     <div className="min-h-screen bg-[#F8FAFC] text-slate-900 pb-28">
       {/* Header Section */}
-      <div className="bg-[#0D2040] text-white pt-6 pb-16 px-4">
-        <div className="max-w-4xl mx-auto text-center">
-          <div className="inline-flex items-center space-x-1.5 bg-white/10 px-3 py-1 rounded-full text-emerald-300 text-[11px] font-semibold mb-2 border border-white/10">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping shrink-0" />
-            <span>Live Regional Healthcare Radar</span>
+      <div className="bg-[#0D2040] text-white pt-6 pb-20 px-4 rounded-b-[2rem] shadow-md relative overflow-hidden">
+        <div className="max-w-4xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 relative z-10">
+          <div>
+            <div className="inline-flex items-center space-x-1.5 bg-white/10 px-3 py-1 rounded-full text-emerald-300 text-[11px] font-semibold mb-2 border border-white/10">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping shrink-0" />
+              <span>Live Regional Healthcare Radar</span>
+            </div>
+            <h1 className="text-xl font-bold text-white">Health & Medical Facilities</h1>
+            <p className="text-xs text-slate-300 mt-1 max-w-lg">
+              Designated FUHSI campus clinics, teaching hospitals, and emergency trauma referral centers across Nigeria.
+            </p>
           </div>
-          <h1 className="text-xl font-bold text-white">Health & Medical Facilities</h1>
-          <p className="text-xs text-slate-300 mt-1 max-w-lg mx-auto">
-            Real-time proximity directory for designated FUHSI campus clinics, teaching hospitals, and emergency trauma referral centers across Nigeria.
-          </p>
+
+          {/* Location Chip Button */}
+          <button
+            type="button"
+            onClick={() => setShowCityPicker(true)}
+            className="flex items-center space-x-2 px-4 py-2 bg-white/10 hover:bg-white/20 border border-white/20 rounded-2xl text-xs font-bold text-white transition-all active:scale-95 cursor-pointer backdrop-blur-md shrink-0"
+          >
+            <MapPin className="w-4 h-4 text-red-400" />
+            <div className="text-left">
+              <span className="text-[10px] text-slate-300 block font-normal leading-none">Current Active Hub</span>
+              <span className="text-xs font-bold">{locationName.split(',')[0]} ▾</span>
+            </div>
+          </button>
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto px-4 -mt-8 space-y-4">
-        {/* Live Location Card with Instant City Override */}
-        <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-200 space-y-3">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center space-x-3">
-              <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
-                locationSource === 'gps' ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-blue-600'
-              }`}>
-                {locationSource === 'gps' ? (
-                  <Crosshair className="w-5 h-5 text-emerald-600 animate-pulse" />
-                ) : (
-                  <Globe className="w-5 h-5 text-blue-600" />
-                )}
+      <div className="max-w-4xl mx-auto px-4 -mt-10 space-y-4">
+        {/* Interactive Multi-Facility Map Banner */}
+        <div className="bg-white rounded-3xl p-4 shadow-sm border border-slate-200 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                <Activity className="w-4 h-4" />
               </div>
               <div>
-                <div className="flex items-center space-x-2">
-                  <span className="text-xs font-extrabold text-slate-900">{locationName}</span>
-                  {locationSource === 'gps' && gpsAccuracy && (
-                    <span className="px-1.5 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] rounded font-mono font-bold">
-                      GPS ±{gpsAccuracy}m
-                    </span>
-                  )}
-                  {locationSource === 'manual' && (
-                    <span className="px-1.5 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 text-[10px] rounded font-bold">
-                      Active Hub
-                    </span>
-                  )}
-                </div>
-                <p className="text-[11px] text-slate-500 font-mono">
-                  {userLocation ? `${userLocation.latitude.toFixed(4)}° N, ${userLocation.longitude.toFixed(4)}° E` : 'Pinpointing location...'}
-                </p>
+                <h2 className="text-xs font-extrabold text-slate-900 uppercase tracking-wider">
+                  Interactive Emergency Radar
+                </h2>
+                <p className="text-[10px] text-slate-500">{locationName} • {rankedFacilities.length} Stations Active</p>
               </div>
             </div>
 
             <div className="flex items-center space-x-2">
-              <button
-                type="button"
-                onClick={() => refreshLocation({ highAccuracy: true, bypassCache: true })}
-                disabled={isLocating}
-                className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold flex items-center space-x-1.5 transition-colors border border-slate-200 active:scale-95 cursor-pointer disabled:opacity-60"
-              >
-                {isLocating ? <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-600" /> : <Compass className="w-3.5 h-3.5 text-blue-600" />}
-                <span>{isLocating ? 'Locating...' : 'Auto-Detect GPS'}</span>
-              </button>
               <button
                 type="button"
                 onClick={handleDiscoverOverpass}
@@ -214,47 +201,6 @@ export default function FacilitiesPage() {
             </div>
           </div>
 
-          {/* 1-Tap Quick Regional Hub Selector */}
-          <div className="pt-2 border-t border-slate-100">
-            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
-              Select Active City / Campus Hub:
-            </div>
-            <div className="flex flex-wrap gap-1.5">
-              {REGIONAL_HUBS.map((hub) => {
-                const isSelected = locationName.toLowerCase().includes(hub.id) || locationName.toLowerCase().includes(hub.name.toLowerCase().split(' ')[0]);
-                return (
-                  <button
-                    key={hub.id}
-                    type="button"
-                    onClick={() => setManualCity(hub.id)}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center space-x-1 ${
-                      isSelected
-                        ? 'bg-blue-600 text-white shadow-sm ring-2 ring-blue-600/30'
-                        : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200'
-                    }`}
-                  >
-                    <span>📍 {hub.name.split(' ')[0]}</span>
-                    {isSelected && <ShieldCheck className="w-3 h-3 text-white ml-0.5" />}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-
-        {/* Interactive Multi-Facility Map Banner */}
-        <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-200">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center space-x-2">
-              <MapPin className="w-4 h-4 text-emerald-600" />
-              <h2 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
-                Live Interactive Emergency Radar
-              </h2>
-            </div>
-            <span className="text-[10px] text-slate-500 font-medium">
-              {rankedFacilities.length} Stations Active
-            </span>
-          </div>
           <EmergencyMap
             studentCoords={userLocation || { latitude: 8.0194, longitude: 4.9042 }}
             facilities={filteredFacilities.length > 0 ? filteredFacilities : rankedFacilities}
@@ -271,16 +217,16 @@ export default function FacilitiesPage() {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search by facility name, city (e.g. Akure, Ado-Ekiti, Ila, Osogbo, Ibadan)..."
-              className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 shadow-sm"
+              placeholder="Search hospital name, city (e.g. Akure, Ado-Ekiti, Ila, Osogbo)..."
+              className="w-full pl-9 pr-4 py-2.5 bg-white border border-slate-200 rounded-2xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 shadow-sm"
             />
           </div>
 
-          <div className="flex items-center space-x-1.5 bg-slate-100 p-1 rounded-xl shrink-0">
+          <div className="flex items-center space-x-1 bg-slate-200/70 p-1 rounded-2xl shrink-0">
             <button
               type="button"
               onClick={() => setFilterType('all')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                 filterType === 'all'
                   ? 'bg-white text-slate-900 shadow-sm'
                   : 'text-slate-600 hover:text-slate-900'
@@ -291,18 +237,18 @@ export default function FacilitiesPage() {
             <button
               type="button"
               onClick={() => setFilterType('nearby')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                 filterType === 'nearby'
                   ? 'bg-white text-emerald-700 shadow-sm'
                   : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              Nearest Stations
+              Closest
             </button>
             <button
               type="button"
               onClick={() => setFilterType('hospital')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                 filterType === 'hospital'
                   ? 'bg-white text-blue-700 shadow-sm'
                   : 'text-slate-600 hover:text-slate-900'
@@ -315,12 +261,12 @@ export default function FacilitiesPage() {
 
         {/* Facilities Grid */}
         {facilitiesLoading && facilities.length === 0 ? (
-          <div className="bg-white rounded-2xl p-12 border border-slate-200 text-center flex flex-col items-center justify-center">
+          <div className="bg-white rounded-3xl p-12 border border-slate-200 text-center flex flex-col items-center justify-center">
             <Loader2 className="w-8 h-8 text-blue-600 animate-spin mb-2" />
             <p className="text-xs text-slate-500 font-medium">Connecting to emergency facilities directory...</p>
           </div>
         ) : filteredFacilities.length === 0 ? (
-          <div className="bg-white rounded-2xl p-8 border border-slate-200 text-center">
+          <div className="bg-white rounded-3xl p-8 border border-slate-200 text-center">
             <Building2 className="w-8 h-8 text-slate-300 mx-auto mb-2" />
             <p className="text-sm font-bold text-slate-700">No Facilities Match Your Search</p>
             <p className="text-xs text-slate-500 mt-1">Try tapping "Scan Local Area" above to search OpenStreetMap for hospitals in your immediate city.</p>
@@ -332,15 +278,15 @@ export default function FacilitiesPage() {
               return (
                 <div
                   key={fac.id || fac.name}
-                  className={`bg-white rounded-2xl p-5 shadow-sm border transition-all flex flex-col justify-between ${
+                  className={`bg-white rounded-3xl p-5 shadow-sm border transition-all flex flex-col justify-between ${
                     isNearest 
-                       ? 'border-emerald-500 ring-1 ring-emerald-500/20 shadow-emerald-500/5' 
+                       ? 'border-emerald-500 ring-2 ring-emerald-500/10 shadow-emerald-500/5' 
                       : 'border-slate-200 hover:border-slate-300'
                   }`}
                 >
                   <div>
                     <div className="flex items-center justify-between mb-3">
-                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+                      <div className={`w-10 h-10 rounded-2xl flex items-center justify-center ${
                         isNearest ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-blue-600'
                       }`}>
                         <Building2 className="w-5 h-5" />
@@ -353,7 +299,7 @@ export default function FacilitiesPage() {
                           </span>
                         )}
                         {fac.distanceKm !== undefined && (
-                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${
+                          <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold ${
                             fac.distanceKm < 10 
                               ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
                               : fac.distanceKm < 50
@@ -383,7 +329,7 @@ export default function FacilitiesPage() {
                         <span>24/7 Emergency & Inpatient Services</span>
                       </div>
                       {fac.is_osm_discovered && (
-                        <div className="flex items-center space-x-1.5 text-[10px] text-emerald-700 font-medium bg-emerald-50/70 px-2 py-1 rounded-lg">
+                        <div className="flex items-center space-x-1.5 text-[10px] text-emerald-700 font-medium bg-emerald-50/70 px-2.5 py-1 rounded-xl">
                           <Activity className="w-3 h-3 text-emerald-600 shrink-0" />
                           <span>Discovered in Your Current Local Area</span>
                         </div>
@@ -402,7 +348,7 @@ export default function FacilitiesPage() {
                       </a>
                     ) : (
                       <div className="w-full py-2 bg-slate-50 text-slate-500 rounded-xl text-xs font-medium text-center border border-slate-100">
-                        Official Emergency Dispatch Line
+                        Official Emergency Line
                       </div>
                     )}
 
@@ -411,7 +357,7 @@ export default function FacilitiesPage() {
                         href={`https://www.google.com/maps/dir/?api=1&destination=${fac.latitude},${fac.longitude}`}
                         target="_blank"
                         rel="noreferrer"
-                        className="w-full py-2 bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-xl text-xs font-bold flex items-center justify-center space-x-1.5 transition-colors border border-slate-200 shadow-sm"
+                        className="w-full py-2 bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-xl text-xs font-bold flex items-center justify-center space-x-1.5 transition-colors border border-slate-200 shadow-sm cursor-pointer"
                       >
                         <Navigation className="w-3.5 h-3.5 text-blue-600" />
                         <span>Navigate Here (Turn-by-Turn)</span>
@@ -424,6 +370,8 @@ export default function FacilitiesPage() {
           </div>
         )}
       </div>
+
+      <CityPickerModal isOpen={showCityPicker} onClose={() => setShowCityPicker(false)} />
     </div>
   );
 }
