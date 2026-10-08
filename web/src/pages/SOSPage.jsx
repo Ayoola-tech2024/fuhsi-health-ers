@@ -247,44 +247,9 @@ export default function SOSPage() {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] text-slate-900 pb-28">
-      {/* 1. Sleek Navigation Header */}
-      <div className="bg-[#0D2040] text-white pt-4 pb-6 px-4 shadow-md border-b border-white/10">
-        <div className="max-w-md mx-auto flex items-center justify-between">
-          {/* University Brand */}
-          <div className="flex items-center space-x-2.5">
-            <div className="w-9 h-9 rounded-xl bg-white/10 border border-white/20 p-1.5 flex items-center justify-center backdrop-blur-md">
-              <svg viewBox="0 0 24 24" className="w-full h-full text-white fill-none stroke-current stroke-2">
-                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-                <path d="M12 8v8" />
-                <path d="M9 11h6" />
-              </svg>
-            </div>
-            <div>
-              <h1 className="font-black text-sm tracking-tight text-white leading-tight flex items-center space-x-1.5">
-                <span>FUHSI ERS</span>
-                <span className="text-[9px] font-extrabold bg-red-600 text-white px-1.5 py-0.2 rounded">LIVE</span>
-              </h1>
-              <p className="text-[10px] text-slate-300 font-medium">Emergency Response System</p>
-            </div>
-          </div>
-
-          {/* Location Chip Button */}
-          <button
-            type="button"
-            onClick={() => setShowCityPicker(true)}
-            className="flex items-center space-x-1.5 px-3 py-1.5 bg-white/10 hover:bg-white/20 border border-white/20 rounded-full text-xs font-bold text-white transition-all active:scale-95 cursor-pointer backdrop-blur-md"
-            title="Tap to change active campus or city"
-          >
-            <MapPin className="w-3.5 h-3.5 text-red-400" />
-            <span className="truncate max-w-[120px] sm:max-w-[160px]">{locationName.split(',')[0]}</span>
-            <span className="text-[10px] opacity-70">▾</span>
-          </button>
-        </div>
-      </div>
-
-      {/* 2. Main Content Body */}
-      <div className="max-w-md mx-auto px-4 pt-4 space-y-4">
-        {/* Student Immediate Profile & Medical Vitals Card */}
+      {/* Main Content Body */}
+      <div className="max-w-md mx-auto px-4 pt-5 space-y-4">
+        {/* Student Immediate Profile Card (Basic & Confidential) */}
         <div className="bg-white rounded-3xl p-4 shadow-sm border border-slate-200 space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
@@ -320,22 +285,19 @@ export default function SOSPage() {
             </div>
           </div>
 
-          {/* Clinical Vitals Strip */}
-          <div className="pt-2 border-t border-slate-100 grid grid-cols-3 gap-2 text-center">
-            <div className="bg-red-50/70 p-2 rounded-xl border border-red-100">
-              <span className="text-[9px] font-bold uppercase tracking-wider text-red-600 block">Blood Group</span>
-              <span className="text-xs font-black text-red-950 block">{bloodGroup}</span>
+          {/* Privacy & Confidentiality Notice */}
+          <div className="pt-2.5 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
+            <div className="flex items-center space-x-1.5 text-slate-600">
+              <span className="text-xs">🔒</span>
+              <span className="font-medium">Medical data confidential & secured</span>
             </div>
-            <div className="bg-blue-50/70 p-2 rounded-xl border border-blue-100">
-              <span className="text-[9px] font-bold uppercase tracking-wider text-blue-600 block">Genotype</span>
-              <span className="text-xs font-black text-blue-950 block">{genotype}</span>
-            </div>
-            <div className="bg-amber-50/70 p-2 rounded-xl border border-amber-100">
-              <span className="text-[9px] font-bold uppercase tracking-wider text-amber-700 block">Allergies</span>
-              <span className="text-[11px] font-bold text-amber-950 truncate block">
-                {profile?.allergies && profile.allergies.length > 0 ? profile.allergies.join(', ') : 'None'}
-              </span>
-            </div>
+            <Link
+              to="/profile"
+              className="text-blue-600 hover:text-blue-800 font-bold flex items-center space-x-0.5 group"
+            >
+              <span>Profile</span>
+              <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+            </Link>
           </div>
         </div>
 
