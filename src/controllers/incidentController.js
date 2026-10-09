@@ -151,8 +151,13 @@ const addLocation = asyncHandler(async (req, res) => {
   }
   const incident = await incidentModel.findById(req.params.id);
   if (!incident) throw new ApiError(404, 'Incident not found');
-  if (incident.student_id !== req.user.id) {
-    throw new ApiError(403, 'Only the reporting student can update this incident location');
+  if (
+    incident.student_id !== req.user.id &&
+    req.user.role !== 'responder' &&
+    req.user.role !== 'clinician' &&
+    req.user.role !== 'admin'
+  ) {
+    throw new ApiError(403, 'Not authorized to update this incident location');
   }
 
   const ping = await incidentModel.addLocationPing(req.params.id, latitude, longitude);
